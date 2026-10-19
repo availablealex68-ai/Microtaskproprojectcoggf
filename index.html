@@ -398,12 +398,14 @@
                             <button onclick="startTaskAction()" class="w-full light-pass glow-pulse bg-slate-900 text-white dark:bg-white dark:text-black font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-transform text-sm">Start Task Now</button>
                         </div>
                         <div id="task-action-area" class="hidden">
-                            <p class="text-xs font-bold text-slate-500 dark:text-zinc-400 mb-2 uppercase">Tap to copy details:</p>
-                            <div class="grid grid-cols-2 gap-3 mb-3">
-                                <div onclick="copyData('John', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-transform text-center"><p class="text-[10px] text-slate-400 mb-1">First Name</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400">John</p></div>
-                                <div onclick="copyData('Doe', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-transform text-center"><p class="text-[10px] text-slate-400 mb-1">Second Name</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400">Doe</p></div>
+                            <div class="flex justify-between items-center mb-3">
+                                <p class="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase">Tap to copy details:</p>
+                                <button onclick="cancelCurrentTask()" class="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-2.5 py-1.5 rounded-lg border border-rose-200 dark:border-rose-800/50 active:scale-95 transition-transform"><i class="fa-solid fa-xmark mr-1"></i> Cancel Task</button>
                             </div>
-                            <div onclick="copyData('Pass@2026!xyz', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-transform text-center mb-5"><p class="text-[10px] text-slate-400 mb-1">Password</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400 tracking-wider">Pass@2026!xyz</p></div>
+                            
+                            <div class="grid grid-cols-2 gap-3 mb-5" id="dynamic-credentials">
+                                <!-- Data will be injected here dynamically -->
+                            </div>
                             
                             <div id="div-2fa" class="mb-5 hidden">
                                 <label class="text-xs font-bold text-rose-500 dark:text-rose-400 mb-1 block">2FA Secret Key (Required)*</label>
@@ -455,6 +457,7 @@
     <script>
         let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let activeTaskRequires2FA = false; let activeTaskRequiresCookies = false; let submittedTaskIds = []; let isFreshLogin = false;
         
+        let activeTaskPlatform = ''; let activeTaskPassword = ''; 
         let currentOverlay = null; // Overlay Back button tracker
 
         function togglePasswordVisibility(inputId, iconId) {
@@ -572,17 +575,76 @@
             }
         }
         
-        function startTaskAction() { document.getElementById('task-instructions').style.display = 'none'; document.getElementById('task-action-area').style.display = 'block'; }
+        window.startTaskAction = () => { 
+            document.getElementById('task-instructions').style.display = 'none'; 
+            document.getElementById('task-action-area').style.display = 'block'; 
+            
+            let taskData = localStorage.getItem('task_data_' + activeTaskId);
+            
+            if(!taskData) {
+                const firstNames = ['Md', 'Abu', 'Sami', 'Alex', 'John', 'David', 'Rahim', 'Karim', 'Sajid', 'Tariq', 'Hasan', 'Sam'];
+                const lastNames = ['Hasan', 'Islam', 'Rahman', 'Khan', 'Sheikh', 'Ali', 'Ahmed', 'Chowdhury', 'Doe'];
+                const fName = firstNames[Math.floor(Math.random()*firstNames.length)];
+                const lName = lastNames[Math.floor(Math.random()*lastNames.length)];
+                
+                // Max 30 chars rule, with '_' and '-'
+                const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                let uname = fName.toLowerCase() + '_' + lName.toLowerCase() + '-';
+                for(let i=0; i<4; i++) uname += chars.charAt(Math.floor(Math.random() * chars.length));
+                
+                taskData = JSON.stringify({
+                    firstName: fName,
+                    lastName: lName,
+                    fullName: fName + ' ' + lName,
+                    username: uname.substring(0, 29)
+                });
+                localStorage.setItem('task_data_' + activeTaskId, taskData);
+            }
+            
+            const data = JSON.parse(taskData);
+            const passToShow = activeTaskPassword || 'Pass@2026!xyz';
+            const credContainer = document.getElementById('dynamic-credentials');
+            
+            let html = '';
+            if(activeTaskPlatform === 'instagram') {
+                html += `<div onclick="copyData('${data.fullName}', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">Name</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400">${data.fullName}</p></div>`;
+                html += `<div onclick="copyData('${data.username}', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">Username</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400">${data.username}</p></div>`;
+            } else {
+                html += `<div onclick="copyData('${data.firstName}', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">First Name</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400">${data.firstName}</p></div>`;
+                html += `<div onclick="copyData('${data.lastName}', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">Last Name</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400">${data.lastName}</p></div>`;
+            }
+            // Add Password box
+            html += `<div onclick="copyData('${passToShow}', this)" class="col-span-2 bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">Password</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400 tracking-wider">${passToShow}</p></div>`;
+            
+            credContainer.innerHTML = html;
+        }
+
+        window.cancelCurrentTask = () => {
+            if(confirm("Are you sure you want to cancel? New data will be generated next time you enter this task.")) {
+                localStorage.removeItem('task_data_' + activeTaskId);
+                closeTaskDetails();
+            }
+        }
+
         function toggleBulkUpload() { const singleArea = document.getElementById('task-single-area'), bulkArea = document.getElementById('task-bulk-area'); if(bulkArea.style.display === 'block') { bulkArea.style.display = 'none'; singleArea.style.display = 'block'; } else { singleArea.style.display = 'none'; bulkArea.style.display = 'block'; } }
         
-        function copyData(text, element) { navigator.clipboard.writeText(text); showFloatingText('Copied!', element); }
+        window.copyData = (text, element) => { 
+            navigator.clipboard.writeText(text); 
+            showFloatingText('Copied!', element); 
+            
+            // Change color to green on copy
+            element.classList.remove('bg-white', 'dark:bg-darkCard', 'border-slate-200', 'dark:border-zinc-700');
+            element.classList.add('bg-emerald-50', 'dark:bg-emerald-500/10', 'border-emerald-400', 'dark:border-emerald-500/50');
+        }
+
         function copyOTP(element) { navigator.clipboard.writeText(document.getElementById('otpCode').innerText); showFloatingText('OTP Copied!', element); }
         function showFloatingText(msg, parent) { const floater = document.createElement('div'); floater.className = 'copy-floater'; floater.innerText = msg; parent.appendChild(floater); setTimeout(() => floater.remove(), 600); }
         function generateOTP(val) { const display = document.getElementById('otpDisplay'); if(val.length > 8) { document.getElementById('otpCode').innerText = Math.floor(100000 + Math.random() * 900000); display.classList.remove('hidden'); } else { display.classList.add('hidden'); } }
 
-        window.openDynamicTask = (id, title, desc, req2fa, reqCook) => {
+        window.openDynamicTask = (id, title, desc, req2fa, reqCook, platform, pass) => {
             if(submittedTaskIds.includes(id)) return alert("You have already submitted this task!");
             activeTaskId = id; activeTaskRequires2FA = req2fa; activeTaskRequiresCookies = reqCook;
+            activeTaskPlatform = platform || 'facebook'; activeTaskPassword = pass || '';
             
             document.getElementById('task-detail-title').innerText = title; document.getElementById('task-detail-desc').innerText = desc;
             
@@ -635,8 +697,8 @@
                     if (user) {
                         // ভেরিফিকেশন পেন্ডিং থাকলে 
                         if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
-                            if (isRegistering) return; // Wait for initial modal setup
-                            startVerificationCheck(user); // If user refreshed during verification
+                            if (isRegistering) return; 
+                            startVerificationCheck(user); 
                             return;
                         }
                         
@@ -776,12 +838,6 @@
             }
         }
 
-        window.logoutUser = () => { 
-            document.getElementById('global-loader').style.display = 'flex';
-            document.getElementById('loader-text').innerText = "Signing out securely...";
-            setTimeout(() => { signOut(auth).then(() => { window.location.reload(); }); }, 800);
-        };
-
         function loadDatabaseRealtime(user) {
             const uid = user.uid;
 
@@ -845,7 +901,8 @@
                         const doneText = isDone ? 'Submitted' : `৳ ${data.reward}`;
                         const safeTitle = (data.title || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
                         const safeDesc = (data.desc || '').replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, "\\n");
-                        html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', ${data.require2FA},${data.requireCookies})`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}"><div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div><div class="flex justify-between items-center"><div class="flex gap-3 items-center"><div class="h-10 w-10 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center text-2xl drop-shadow-md"><i class="fa-brands fa-${data.platform}"></i></div><div><p class="font-bold text-sm">${data.title}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">${data.require2FA ? '2FA • ' : ''}${data.requireCookies ? 'Cookies' : 'Simple Task'}</p></div></div><span class="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">${doneText}</span></div></div>`;
+                        const safePass = (data.password || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                        html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', ${data.require2FA},${data.requireCookies}, '${data.platform \vert{}\vert{} 'facebook'}', '${safePass}')`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}"><div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div><div class="flex justify-between items-center"><div class="flex gap-3 items-center"><div class="h-10 w-10 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center text-2xl drop-shadow-md"><i class="fa-brands fa-${data.platform || 'facebook'}"></i></div><div><p class="font-bold text-sm">${data.title}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">${data.require2FA ? '2FA • ' : ''}${data.requireCookies ? 'Cookies' : 'Simple Task'}</p></div></div><span class="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">${doneText}</span></div></div>`;
                     }); list.innerHTML = html;
                 }
             });
@@ -962,14 +1019,6 @@
                 isRegistering = false; 
             }
         };
-
-        window.cancelVerification = async () => { 
-            clearInterval(verifyInterval); clearInterval(timerInterval);
-            await auth.signOut(); 
-            const modal = document.getElementById('verify-modal'); 
-            modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('verify-modal-content').classList.add('scale-95'); 
-            toggleAuth('login'); 
-        }
 
         window.loginUser = async () => {
             const email = document.getElementById('login-email').value.trim(), password = document.getElementById('login-password').value.trim();
