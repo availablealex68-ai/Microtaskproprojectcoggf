@@ -60,6 +60,7 @@
 </head>
 <body class="flex justify-center h-screen w-full overflow-hidden bg-slate-50 dark:bg-darkBg text-slate-900 dark:text-zinc-50 relative">
 
+    <!-- GLOBAL LOADER -->
     <div id="global-loader" class="fixed inset-0 z-[999] bg-slate-50 dark:bg-darkBg flex items-center justify-center transition-colors">
         <div class="flex flex-col items-center">
             <i class="fa-solid fa-spinner animate-spin text-4xl text-cyan-500 mb-3"></i>
@@ -231,20 +232,22 @@
                         <button onclick="toggleLeaderboard('pending')" id="btn-lb-pending" class="flex-1 relative z-10 py-2 text-sm font-bold text-slate-500 dark:text-zinc-400 transition-colors">Pending</button>
                     </div>
                 </div>
-                <div class="relative w-full overflow-hidden min-h-[300px]" id="lb-slider-container">
-                    <div id="lb-approved" class="absolute w-full top-0 left-0 transition-transform duration-300 transform translate-x-0 opacity-100 z-10">
+                
+                <!-- Fixed Scrollable Area for Leaderboard -->
+                <div class="relative w-full" id="lb-slider-container">
+                    <div id="lb-approved" class="w-full fade-in">
                         <div class="light-pass bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-2xl mb-3 flex items-center gap-4 border-2 border-cyan-400 dark:border-cyan-500 shadow-md">
                             <h1 class="text-2xl font-black text-cyan-600 dark:text-cyan-400 w-6 text-center">★</h1>
                             <img id="lb-current-user-pic" src="" class="h-12 w-12 rounded-full border-2 border-cyan-400 dark:border-cyan-500 object-cover bg-slate-200">
                             <div class="flex-1"><p class="font-bold text-sm text-cyan-700 dark:text-cyan-300">You <span id="lb-current-name">(User)</span> <span class="verify-badge hidden"><i class="fa-solid fa-circle-check text-cyan-500 text-sm ml-1"></i></span></p><p class="text-[11px] text-cyan-600/70 dark:text-cyan-400/70"><span id="lb-my-approved">0</span> Tasks done</p></div>
                             <p class="text-emerald-600 dark:text-emerald-400 font-bold">৳ <span id="lb-my-earned">0</span></p>
                         </div>
-                        <div id="lb-approved-list" class="space-y-3">
+                        <div id="lb-approved-list" class="space-y-3 pb-6">
                             <p class="text-center text-sm text-slate-500 py-4">Loading Leaderboard...</p>
                         </div>
                     </div>
-                    <div id="lb-pending" class="absolute w-full top-0 left-0 transition-transform duration-300 transform translate-x-full opacity-0 pointer-events-none z-0">
-                        <div id="lb-pending-list" class="space-y-3">
+                    <div id="lb-pending" class="w-full fade-in hidden">
+                        <div id="lb-pending-list" class="space-y-3 pb-6">
                             <p class="text-center text-sm text-slate-500 py-4">Loading Leaderboard...</p>
                         </div>
                     </div>
@@ -532,8 +535,22 @@
 
         function toggleLeaderboard(type) { 
             const lbApproved = document.getElementById('lb-approved'), lbPending = document.getElementById('lb-pending'), indicator = document.getElementById('lb-indicator'), btnApproved = document.getElementById('btn-lb-approved'), btnPending = document.getElementById('btn-lb-pending'); 
-            if(type === 'pending') { indicator.style.transform = 'translateX(100%)'; btnApproved.classList.replace('text-slate-900', 'text-slate-500'); btnApproved.classList.replace('dark:text-white', 'dark:text-zinc-400'); btnPending.classList.replace('text-slate-500', 'text-slate-900'); btnPending.classList.replace('dark:text-zinc-400', 'dark:text-white'); lbApproved.style.transform = 'translateX(-100%)'; lbApproved.style.opacity = '0'; lbApproved.classList.add('pointer-events-none'); lbPending.style.transform = 'translateX(0)'; lbPending.style.opacity = '1'; lbPending.classList.remove('pointer-events-none'); } 
-            else { indicator.style.transform = 'translateX(0)'; btnPending.classList.replace('text-slate-900', 'text-slate-500'); btnPending.classList.replace('dark:text-white', 'dark:text-zinc-400'); btnApproved.classList.replace('text-slate-500', 'text-slate-900'); btnApproved.classList.replace('dark:text-zinc-400', 'dark:text-white'); lbPending.style.transform = 'translateX(100%)'; lbPending.style.opacity = '0'; lbPending.classList.add('pointer-events-none'); lbApproved.style.transform = 'translateX(0)'; lbApproved.style.opacity = '1'; lbApproved.classList.remove('pointer-events-none'); } 
+            
+            if(type === 'pending') { 
+                indicator.style.transform = 'translateX(100%)'; 
+                btnApproved.classList.replace('text-slate-900', 'text-slate-500'); btnApproved.classList.replace('dark:text-white', 'dark:text-zinc-400'); 
+                btnPending.classList.replace('text-slate-500', 'text-slate-900'); btnPending.classList.replace('dark:text-zinc-400', 'dark:text-white'); 
+                
+                lbApproved.classList.add('hidden');
+                lbPending.classList.remove('hidden');
+            } else { 
+                indicator.style.transform = 'translateX(0)'; 
+                btnPending.classList.replace('text-slate-900', 'text-slate-500'); btnPending.classList.replace('dark:text-white', 'dark:text-zinc-400'); 
+                btnApproved.classList.replace('text-slate-500', 'text-slate-900'); btnApproved.classList.replace('dark:text-zinc-400', 'dark:text-white'); 
+                
+                lbPending.classList.add('hidden');
+                lbApproved.classList.remove('hidden');
+            } 
         }
         
         window.clearNotifications = () => { 
@@ -663,7 +680,7 @@
     <!-- FIREBASE DB & AUTH API SCRIPTS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -686,48 +703,54 @@
         let verifyTimeLeft = 300;
         let isRegistering = false;
 
-        // Auto logout bug fix (browserLocalPersistence)
-        setPersistence(auth, browserLocalPersistence).then(() => {
-            getRedirectResult(auth).then((result) => {
-                if (result) { isFreshLogin = true; }
-            }).catch((error) => { console.error("Redirect Error:", error); });
+        // Redirect result for in-app browsers
+        getRedirectResult(auth).then((result) => {
+            if (result) { isFreshLogin = true; }
+        }).catch((error) => { console.error("Redirect Error:", error); });
 
-            onAuthStateChanged(auth, async (user) => {
-                try {
-                    if (user) {
-                        // ভেরিফিকেশন পেন্ডিং থাকলে 
-                        if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
-                            if (isRegistering) return; 
-                            startVerificationCheck(user); 
-                            return;
-                        }
-                        
-                        try {
-                            const userRef = doc(db, "users", user.uid);
-                            const userSnap = await getDoc(userRef);
-                            if(!userSnap.exists()){
-                                const defaultName = user.displayName || user.email.split('@')[0];
-                                await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
-                            }
-                        } catch(err) { console.log("DB handled:", err); }
-                        
-                        showAppUI(user, !isFreshLogin);
-                        loadDatabaseRealtime(user); 
-                        isFreshLogin = false;
-                    } else { 
-                        showAuthScreen(); 
+        onAuthStateChanged(auth, async (user) => {
+            
+            // Remove Loader explicitly first
+            document.getElementById('global-loader').style.display = 'none';
+            document.getElementById('global-loader').classList.add('hidden');
+            
+            try {
+                if (user) {
+                    // ভেরিফিকেশন পেন্ডিং থাকলে 
+                    if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
+                        if (isRegistering) return; 
+                        startVerificationCheck(user); 
+                        return;
                     }
-                } catch(e) {
-                    console.error(e);
-                    auth.signOut(); showAuthScreen();
+                    
+                    try {
+                        const userRef = doc(db, "users", user.uid);
+                        const userSnap = await getDoc(userRef);
+                        if(!userSnap.exists()){
+                            const defaultName = user.displayName || user.email.split('@')[0];
+                            await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                        }
+                    } catch(err) { console.log("DB handled:", err); }
+                    
+                    showAppUI(user, !isFreshLogin);
+                    loadDatabaseRealtime(user); 
+                    isFreshLogin = false;
+                } else { 
+                    showAuthScreen(); 
                 }
-            });
+            } catch(e) {
+                console.error(e);
+                auth.signOut(); showAuthScreen();
+            }
         });
 
         // 5 Minutes Verification Logic 
         function startVerificationCheck(user) {
             document.getElementById('global-loader').style.display = 'none'; 
-            document.getElementById('auth-container').style.display = 'flex'; 
+            const authC = document.getElementById('auth-container');
+            authC.style.display = 'flex'; 
+            authC.classList.remove('hidden');
+            
             document.getElementById('main-app-container').style.display = 'none';
             
             const modal = document.getElementById('verify-modal');
@@ -800,7 +823,12 @@
 
         function showAuthScreen() { 
             document.getElementById('global-loader').style.display = 'none'; 
-            document.getElementById('auth-container').style.display = 'flex'; 
+            document.getElementById('global-loader').classList.add('hidden');
+            
+            const authC = document.getElementById('auth-container');
+            authC.style.display = 'flex'; 
+            authC.classList.remove('hidden');
+            
             document.getElementById('main-app-container').style.display = 'none'; 
             document.getElementById('auth-theme-btn').style.display = 'flex'; 
             
@@ -813,7 +841,12 @@
         
         function showAppUI(user, instant = false) {
             document.getElementById('global-loader').style.display = 'none'; 
-            document.getElementById('auth-container').style.display = 'none'; 
+            document.getElementById('global-loader').classList.add('hidden');
+            
+            const authC = document.getElementById('auth-container');
+            authC.style.display = 'none'; 
+            authC.classList.add('hidden');
+            
             document.getElementById('auth-theme-btn').style.display = 'none';
             
             if(instant) { 
