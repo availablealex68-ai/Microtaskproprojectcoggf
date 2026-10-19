@@ -83,7 +83,7 @@
     <!-- ========================================== -->
     <!-- 1. AUTHENTICATION SECTION                  -->
     <!-- ========================================== -->
-    <div id="auth-container" class="w-full max-w-md h-full flex-col justify-center px-6 relative z-40 bg-slate-50 dark:bg-darkBg transition-colors fade-in">
+    <div id="auth-container" class="w-full max-w-md h-full flex-col justify-center px-6 relative z-40 bg-slate-50 dark:bg-darkBg transition-colors fade-in hidden">
         
         <div class="flex flex-col items-center mb-6 float-1">
             <div class="h-16 w-16 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)] mb-4 relative overflow-hidden">
@@ -150,7 +150,7 @@
         </div>
     </div>
 
-    <!-- VERIFICATION MODAL -->
+    <!-- 5-MIN VERIFICATION MODAL -->
     <div id="verify-modal" class="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
         <div class="bg-white dark:bg-darkCard p-8 rounded-3xl shadow-2xl max-w-[320px] w-full text-center border border-slate-200 dark:border-zinc-700 transform scale-95 transition-transform duration-300" id="verify-modal-content">
             <div class="h-20 w-20 bg-cyan-500/10 rounded-full flex items-center justify-center mx-auto mb-5 relative">
@@ -158,8 +158,10 @@
                 <svg class="animate-spin absolute inset-0 h-full w-full text-cyan-500/50" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
             </div>
             <h3 class="text-xl font-bold text-slate-800 dark:text-white mb-2">Check Your Email</h3>
-            <p class="text-xs text-slate-500 dark:text-zinc-400 mb-6 leading-relaxed">We've sent a verification link to your email. <br><strong class="text-cyan-500">Waiting for you to verify...</strong></p>
-            <button type="button" onclick="cancelVerification()" class="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-wider">Cancel</button>
+            <p class="text-xs text-slate-500 dark:text-zinc-400 mb-4 leading-relaxed">We've sent a verification link to your email. <br><strong class="text-cyan-500">Waiting for you to verify...</strong></p>
+            <p id="verify-timer-display" class="text-3xl font-black text-rose-500 mb-5 tracking-widest drop-shadow-sm">05:00</p>
+            <button id="btn-resend-link" onclick="resendVerification()" class="hidden w-full bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-400 font-bold py-3 rounded-xl mb-4 border border-cyan-200 dark:border-cyan-800 active:scale-95 transition-transform flex justify-center items-center gap-2"><i class="fa-solid fa-rotate-right"></i> <span>Resend Link</span></button>
+            <button type="button" onclick="cancelVerification()" class="text-xs font-bold text-slate-400 hover:text-rose-500 transition-colors uppercase tracking-wider">Cancel & Logout</button>
         </div>
     </div>
 
@@ -452,6 +454,8 @@
     <!-- UI Scripts -->
     <script>
         let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let activeTaskRequires2FA = false; let activeTaskRequiresCookies = false; let submittedTaskIds = []; let isFreshLogin = false;
+        
+        let currentOverlay = null; // Overlay Back button tracker
 
         function togglePasswordVisibility(inputId, iconId) {
             const input = document.getElementById(inputId), icon = document.getElementById(iconId);
@@ -480,22 +484,54 @@
         function setButtonLoading(id, isLoading, defaultText, iconClass) {
             const btn = document.getElementById(id); if(!btn) return;
             if (isLoading) { btn.disabled = true; btn.classList.add('opacity-70', 'cursor-not-allowed'); btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i> <span>Processing...</span>`; } 
-            else { btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed'); btn.innerHTML = `<i class="${iconClass}"></i> <span>${defaultText}</span>`; }
+            else { btn.disabled = false; btn.classList.remove('opacity-70', 'cursor-not-allowed'); 
+                if(iconClass) { btn.innerHTML = `<i class="${iconClass}"></i> <span>${defaultText}</span>`; }
+                else { btn.innerHTML = `<span>${defaultText}</span>`; }
+            }
         }
 
-        function openSettings() { document.getElementById('settings-overlay').style.display = 'flex'; document.getElementById('bottom-nav').style.display = 'none'; }
-        function closeSettings() { document.getElementById('settings-overlay').style.display = 'none'; document.getElementById('bottom-nav').style.display = 'block'; }
-        function openWithdraw() { document.getElementById('withdraw-overlay').style.display = 'flex'; document.getElementById('bottom-nav').style.display = 'none'; document.getElementById('withdraw-balance-display').innerText = currentUserBalance.toLocaleString(); }
-        function closeWithdraw() { document.getElementById('withdraw-overlay').style.display = 'none'; document.getElementById('bottom-nav').style.display = 'block'; }
+        // --- Back Button Navigation & Overlays --- //
+        function openOverlay(id) {
+            document.getElementById(id).style.display = 'flex';
+            document.getElementById('bottom-nav').style.display = 'none';
+            currentOverlay = id;
+            history.pushState({ overlay: id }, '', '#' + id);
+        }
+
+        function closeAnyOverlay(id) {
+            document.getElementById(id).style.display = 'none';
+            document.getElementById('bottom-nav').style.display = 'block';
+            if(id === 'task-detail-overlay') {
+                document.getElementById('task-instructions').style.display = 'block'; 
+                document.getElementById('task-action-area').style.display = 'none';
+                document.getElementById('twoFaInput').value=''; document.getElementById('cookieInput').value=''; document.getElementById('otpDisplay').classList.add('hidden');
+            }
+            currentOverlay = null;
+        }
+
+        window.addEventListener('popstate', (e) => {
+            if (currentOverlay) { closeAnyOverlay(currentOverlay); } 
+            else if (e.state && e.state.tab) { switchAppTab(e.state.tab, false); } 
+            else { switchAppTab('home', false); }
+        });
+
+        function openSettings() { openOverlay('settings-overlay'); }
+        function closeSettings() { if(currentOverlay==='settings-overlay') history.back(); else closeAnyOverlay('settings-overlay'); }
         
+        function openWithdraw() { openOverlay('withdraw-overlay'); document.getElementById('withdraw-balance-display').innerText = currentUserBalance.toLocaleString(); }
+        function closeWithdraw() { if(currentOverlay==='withdraw-overlay') history.back(); else closeAnyOverlay('withdraw-overlay'); }
+        
+        function openNotifications() { openOverlay('notif-overlay'); const badge = document.getElementById('notif-badge'); if(badge) badge.style.display = 'none'; }
+        function closeNotifications() { if(currentOverlay==='notif-overlay') history.back(); else closeAnyOverlay('notif-overlay'); }
+        
+        function closeTaskDetails() { if(currentOverlay==='task-detail-overlay') history.back(); else closeAnyOverlay('task-detail-overlay'); }
+        // ---------------------------------------- //
+
         function toggleLeaderboard(type) { 
             const lbApproved = document.getElementById('lb-approved'), lbPending = document.getElementById('lb-pending'), indicator = document.getElementById('lb-indicator'), btnApproved = document.getElementById('btn-lb-approved'), btnPending = document.getElementById('btn-lb-pending'); 
             if(type === 'pending') { indicator.style.transform = 'translateX(100%)'; btnApproved.classList.replace('text-slate-900', 'text-slate-500'); btnApproved.classList.replace('dark:text-white', 'dark:text-zinc-400'); btnPending.classList.replace('text-slate-500', 'text-slate-900'); btnPending.classList.replace('dark:text-zinc-400', 'dark:text-white'); lbApproved.style.transform = 'translateX(-100%)'; lbApproved.style.opacity = '0'; lbApproved.classList.add('pointer-events-none'); lbPending.style.transform = 'translateX(0)'; lbPending.style.opacity = '1'; lbPending.classList.remove('pointer-events-none'); } 
             else { indicator.style.transform = 'translateX(0)'; btnPending.classList.replace('text-slate-900', 'text-slate-500'); btnPending.classList.replace('dark:text-white', 'dark:text-zinc-400'); btnApproved.classList.replace('text-slate-500', 'text-slate-900'); btnApproved.classList.replace('dark:text-zinc-400', 'dark:text-white'); lbPending.style.transform = 'translateX(100%)'; lbPending.style.opacity = '0'; lbPending.classList.add('pointer-events-none'); lbApproved.style.transform = 'translateX(0)'; lbApproved.style.opacity = '1'; lbApproved.classList.remove('pointer-events-none'); } 
         }
-        
-        function openNotifications() { document.getElementById('notif-overlay').style.display = 'flex'; document.getElementById('bottom-nav').style.display = 'none'; const badge = document.getElementById('notif-badge'); if(badge) badge.style.display = 'none'; }
-        function closeNotifications() { document.getElementById('notif-overlay').style.display = 'none'; document.getElementById('bottom-nav').style.display = 'block'; }
         
         window.clearNotifications = () => { 
             let clearedNotices = JSON.parse(localStorage.getItem('clearedNotices')) || [];
@@ -515,9 +551,27 @@
         }
         window.closeNotifDetail = () => { const modal = document.getElementById('notif-detail-modal'); modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('notif-detail-content').classList.add('scale-95'); }
         
-        function switchAppTab(tabId) { document.querySelectorAll('.app-page').forEach(page => page.classList.remove('active')); document.getElementById('page-' + tabId).classList.add('active'); document.querySelectorAll('.app-nav-item').forEach(item => { item.classList.remove('text-cyan-600', 'dark:text-cyan-400'); item.classList.add('text-slate-400', 'dark:text-zinc-500'); }); document.querySelector('.app-task-text').classList.remove('text-cyan-600', 'dark:text-cyan-400'); if(tabId !== 'task') { event.currentTarget.classList.remove('text-slate-400', 'dark:text-zinc-500'); event.currentTarget.classList.add('text-cyan-600', 'dark:text-cyan-400'); } else { document.querySelector('.app-task-text').classList.add('text-cyan-600', 'dark:text-cyan-400'); } }
+        function switchAppTab(tabId, pushToHistory = true) { 
+            document.querySelectorAll('.app-page').forEach(page => page.classList.remove('active')); 
+            document.getElementById('page-' + tabId).classList.add('active'); 
+            
+            document.querySelectorAll('.app-nav-item').forEach(item => { item.classList.remove('text-cyan-600', 'dark:text-cyan-400'); item.classList.add('text-slate-400', 'dark:text-zinc-500'); }); 
+            document.querySelector('.app-task-text').classList.remove('text-cyan-600', 'dark:text-cyan-400'); 
+            
+            const btn = document.querySelector(`button[onclick*="switchAppTab('${tabId}')"]`);
+            if(btn && tabId !== 'task') {
+                btn.classList.remove('text-slate-400', 'dark:text-zinc-500'); 
+                btn.classList.add('text-cyan-600', 'dark:text-cyan-400'); 
+            } else if (tabId === 'task') { 
+                document.querySelector('.app-task-text').classList.add('text-cyan-600', 'dark:text-cyan-400'); 
+            } 
+
+            if(pushToHistory) {
+                if(tabId === 'home') { history.replaceState({ tab: 'home' }, '', '#home'); } 
+                else { history.pushState({ tab: tabId }, '', '#' + tabId); }
+            }
+        }
         
-        function closeTaskDetails() { document.getElementById('task-detail-overlay').style.display = 'none'; document.getElementById('bottom-nav').style.display = 'block'; document.getElementById('task-instructions').style.display = 'block'; document.getElementById('task-action-area').style.display = 'none'; document.getElementById('twoFaInput').value=''; document.getElementById('cookieInput').value=''; document.getElementById('otpDisplay').classList.add('hidden'); }
         function startTaskAction() { document.getElementById('task-instructions').style.display = 'none'; document.getElementById('task-action-area').style.display = 'block'; }
         function toggleBulkUpload() { const singleArea = document.getElementById('task-single-area'), bulkArea = document.getElementById('task-bulk-area'); if(bulkArea.style.display === 'block') { bulkArea.style.display = 'none'; singleArea.style.display = 'block'; } else { singleArea.style.display = 'none'; bulkArea.style.display = 'block'; } }
         
@@ -539,7 +593,7 @@
             submitBtn.disabled = false; submitBtn.classList.replace('from-slate-500', 'from-emerald-500'); submitBtn.classList.replace('to-slate-600', 'to-cyan-500'); submitBtn.classList.add('glow-pulse', 'active:scale-95');
             submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> <span>Submit Task</span>`;
             
-            document.getElementById('task-detail-overlay').style.display = 'flex'; document.getElementById('bottom-nav').style.display = 'none'; 
+            openOverlay('task-detail-overlay'); 
         }
 
     </script>
@@ -547,7 +601,7 @@
     <!-- FIREBASE DB & AUTH API SCRIPTS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -566,38 +620,121 @@
         const provider = new GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
         
-        let verifyInterval;
+        let verifyInterval, timerInterval;
+        let verifyTimeLeft = 300;
+        let isRegistering = false;
 
-        // টেলিগ্রাম/মেসেঞ্জারের মত ইন-অ্যাপ ব্রাউজারের গুগল লগইন এর জন্য
-        getRedirectResult(auth).then((result) => {
-            if (result) { isFreshLogin = true; }
-        }).catch((error) => { console.error("Redirect Error:", error); });
+        // Auto logout bug fix (browserLocalPersistence)
+        setPersistence(auth, browserLocalPersistence).then(() => {
+            getRedirectResult(auth).then((result) => {
+                if (result) { isFreshLogin = true; }
+            }).catch((error) => { console.error("Redirect Error:", error); });
 
-        onAuthStateChanged(auth, async (user) => {
-            try {
-                if (user) {
-                    if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
-                        auth.signOut(); showAuthScreen(); return;
-                    }
-                    try {
-                        const userRef = doc(db, "users", user.uid);
-                        const userSnap = await getDoc(userRef);
-                        if(!userSnap.exists()){
-                            const defaultName = user.displayName || user.email.split('@')[0];
-                            await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+            onAuthStateChanged(auth, async (user) => {
+                try {
+                    if (user) {
+                        // ভেরিফিকেশন পেন্ডিং থাকলে 
+                        if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
+                            if (isRegistering) return; // Wait for initial modal setup
+                            startVerificationCheck(user); // If user refreshed during verification
+                            return;
                         }
-                    } catch(err) { console.log("DB handled:", err); }
-                    showAppUI(user, !isFreshLogin);
-                    loadDatabaseRealtime(user); 
-                    isFreshLogin = false;
-                } else { 
-                    showAuthScreen(); 
+                        
+                        try {
+                            const userRef = doc(db, "users", user.uid);
+                            const userSnap = await getDoc(userRef);
+                            if(!userSnap.exists()){
+                                const defaultName = user.displayName || user.email.split('@')[0];
+                                await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                            }
+                        } catch(err) { console.log("DB handled:", err); }
+                        
+                        showAppUI(user, !isFreshLogin);
+                        loadDatabaseRealtime(user); 
+                        isFreshLogin = false;
+                    } else { 
+                        showAuthScreen(); 
+                    }
+                } catch(e) {
+                    console.error(e);
+                    auth.signOut(); showAuthScreen();
                 }
-            } catch(e) {
-                console.error(e);
-                auth.signOut(); showAuthScreen();
-            }
+            });
         });
+
+        // 5 Minutes Verification Logic 
+        function startVerificationCheck(user) {
+            document.getElementById('global-loader').style.display = 'none'; 
+            document.getElementById('auth-container').style.display = 'flex'; 
+            document.getElementById('main-app-container').style.display = 'none';
+            
+            const modal = document.getElementById('verify-modal');
+            modal.classList.remove('pointer-events-none', 'opacity-0'); 
+            document.getElementById('verify-modal-content').classList.remove('scale-95');
+            
+            document.getElementById('btn-resend-link').classList.add('hidden');
+            verifyTimeLeft = 300;
+            updateTimerDisplay();
+
+            clearInterval(verifyInterval);
+            clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                verifyTimeLeft--;
+                updateTimerDisplay();
+                if(verifyTimeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    document.getElementById('btn-resend-link').classList.remove('hidden');
+                    document.getElementById('verify-timer-display').innerText = "00:00";
+                }
+            }, 1000);
+
+            verifyInterval = setInterval(async () => {
+                if(verifyTimeLeft > 0) {
+                    await user.reload();
+                    if (user.emailVerified) { 
+                        clearInterval(verifyInterval); 
+                        clearInterval(timerInterval);
+                        
+                        modal.classList.add('opacity-0', 'pointer-events-none'); 
+                        document.getElementById('verify-modal-content').classList.add('scale-95'); 
+                        
+                        try {
+                            const userRef = doc(db, "users", user.uid);
+                            const uSnap = await getDoc(userRef);
+                            if(!uSnap.exists()) {
+                                await setDoc(userRef, { name: user.displayName || user.email.split('@')[0], email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                            }
+                        } catch(err) { console.log("DB Init:", err); }
+                        
+                        showAppUI(user, false); 
+                        loadDatabaseRealtime(user);
+                    }
+                }
+            }, 3000);
+        }
+
+        function updateTimerDisplay() {
+            if(verifyTimeLeft <= 0) return;
+            let m = Math.floor(verifyTimeLeft / 60).toString().padStart(2, '0');
+            let s = (verifyTimeLeft % 60).toString().padStart(2, '0');
+            document.getElementById('verify-timer-display').innerText = m + ":" + s;
+        }
+
+        window.resendVerification = async () => {
+            const user = auth.currentUser;
+            if(user) {
+                setButtonLoading('btn-resend-link', true, 'Sending...', 'fa-solid fa-spinner');
+                try {
+                    await sendEmailVerification(user);
+                    alert("Verification link sent again to your email!");
+                    startVerificationCheck(user); 
+                } catch(e) {
+                    alert("Error: " + e.message);
+                }
+                setButtonLoading('btn-resend-link', false, 'Resend Link', 'fa-solid fa-rotate-right');
+            }
+        }
 
         function showAuthScreen() { 
             document.getElementById('global-loader').style.display = 'none'; 
@@ -605,13 +742,10 @@
             document.getElementById('main-app-container').style.display = 'none'; 
             document.getElementById('auth-theme-btn').style.display = 'flex'; 
             
-            // অটোমেটিক অ্যাডমিন মেইল বসে থাকলে সেটা রিমুভ করার জন্য
+            // Clean inputs to avoid saved admin emails
             setTimeout(() => {
-                document.getElementById('login-email').value = '';
-                document.getElementById('login-password').value = '';
-                document.getElementById('reg-name').value = '';
-                document.getElementById('reg-email').value = '';
-                document.getElementById('reg-password').value = '';
+                document.getElementById('login-email').value = ''; document.getElementById('login-password').value = '';
+                document.getElementById('reg-name').value = ''; document.getElementById('reg-email').value = ''; document.getElementById('reg-password').value = '';
             }, 100);
         }
         
@@ -622,7 +756,8 @@
             
             if(instant) { 
                 document.getElementById('main-app-container').style.display = 'flex'; 
-                switchAppTab('home'); 
+                switchAppTab('home', false); 
+                history.replaceState({ tab: 'home' }, '', '#home');
             } else {
                 const displayName = user.displayName || user.email.split('@')[0];
                 const successScreen = document.getElementById('success-screen');
@@ -634,7 +769,8 @@
                     setTimeout(() => { 
                         document.getElementById('main-app-container').style.display = 'flex'; 
                         document.getElementById('main-app-container').classList.add('fade-in'); 
-                        switchAppTab('home'); 
+                        switchAppTab('home', false); 
+                        history.replaceState({ tab: 'home' }, '', '#home');
                     }, 300); 
                 }, 1500);
             }
@@ -772,7 +908,7 @@
             if(activeTaskRequires2FA) { const twoFa = document.getElementById('twoFaInput').value.trim(); if(!twoFa) return alert("Please provide the 2FA Secret Key!"); }
             if(activeTaskRequiresCookies) { const cookies = document.getElementById('cookieInput').value.trim(); if(cookies.length < 100) return alert("Invalid Cookie! Must be at least 100 characters."); }
 
-            setButtonLoading('btn-task-submit', true);
+            setButtonLoading('btn-task-submit', true, 'Processing...', 'fa-solid fa-spinner');
             try {
                 await addDoc(collection(db, "task_submissions"), { uid: uid, taskId: activeTaskId, email: auth.currentUser.email, status: "pending", timestamp: serverTimestamp() });
                 await updateDoc(doc(db, "users", uid), { pendingTasks: increment(1), submittedTasks: [...submittedTaskIds, activeTaskId] });
@@ -788,7 +924,7 @@
             const method = document.getElementById('withdraw-method').value, account = document.getElementById('withdraw-account').value.trim(), amount = parseFloat(document.getElementById('withdraw-amount').value);
             if (!method) return alert("No payment methods available."); if (!account) return alert("Please enter your account number/ID."); if (!amount || amount < 100) return alert("Minimum withdrawal is ৳100."); if (amount > currentUserBalance) return alert("Insufficient balance!");
 
-            setButtonLoading('btn-withdraw-submit', true);
+            setButtonLoading('btn-withdraw-submit', true, 'Processing...', 'fa-solid fa-spinner');
             try {
                 await addDoc(collection(db, "withdrawals"), { uid: auth.currentUser.uid, email: auth.currentUser.email, method: method, account: account, amount: amount, status: "pending", timestamp: serverTimestamp() });
                 await updateDoc(doc(db, "users", auth.currentUser.uid), { balance: increment(-amount), totalWithdrawn: increment(amount) });
@@ -812,38 +948,28 @@
             if(!name || !email || !password) return alert("Please fill all fields!"); if(password.length < 6) return alert("Password min 6 chars.");
             
             setButtonLoading('btn-reg-submit', true, 'Processing...', 'fa-solid fa-spinner'); 
-            isFreshLogin = true;
+            isFreshLogin = true; isRegistering = true;
             
             try {
                 const cred = await createUserWithEmailAndPassword(auth, email, password);
                 await updateProfile(cred.user, { displayName: name });
                 await sendEmailVerification(cred.user);
-                
-                const modal = document.getElementById('verify-modal'); 
-                modal.classList.remove('pointer-events-none', 'opacity-0'); document.getElementById('verify-modal-content').classList.remove('scale-95');
-                
-                verifyInterval = setInterval(async () => {
-                    await auth.currentUser.reload();
-                    if (auth.currentUser.emailVerified) { 
-                        clearInterval(verifyInterval); 
-                        modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('verify-modal-content').classList.add('scale-95'); 
-                        
-                        try {
-                            const userRef = doc(db, "users", auth.currentUser.uid);
-                            await setDoc(userRef, { name: name, email: email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
-                        } catch(err) { console.log("DB Init Check:", err); }
-                        
-                        showAppUI(auth.currentUser, false); loadDatabaseRealtime(auth.currentUser);
-                    }
-                }, 3000);
+                startVerificationCheck(cred.user);
             } catch (e) { 
-                alert("Error: " + e.message); 
+                alert("Registration Error: " + e.message); 
             } finally {
                 setButtonLoading('btn-reg-submit', false, 'Create Account', 'fa-solid fa-user-plus');
+                isRegistering = false; 
             }
         };
 
-        window.cancelVerification = () => { clearInterval(verifyInterval); auth.signOut(); const modal = document.getElementById('verify-modal'); modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('verify-modal-content').classList.add('scale-95'); toggleAuth('login'); }
+        window.cancelVerification = async () => { 
+            clearInterval(verifyInterval); clearInterval(timerInterval);
+            await auth.signOut(); 
+            const modal = document.getElementById('verify-modal'); 
+            modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('verify-modal-content').classList.add('scale-95'); 
+            toggleAuth('login'); 
+        }
 
         window.loginUser = async () => {
             const email = document.getElementById('login-email').value.trim(), password = document.getElementById('login-password').value.trim();
@@ -854,7 +980,10 @@
             
             try {
                 const cred = await signInWithEmailAndPassword(auth, email, password);
-                if(!cred.user.emailVerified) { alert("Please verify email first!"); await auth.signOut(); }
+                if(!cred.user.emailVerified) { 
+                    alert("Please verify email first!"); 
+                    await auth.signOut(); 
+                }
             } catch (e) { 
                 alert("Login Failed: Incorrect email or password."); 
             } finally {
@@ -865,29 +994,19 @@
         window.googleLogin = async () => {
             setButtonLoading('btn-google-login', true, 'Processing...', 'fa-brands fa-google text-red-500'); 
             isFreshLogin = true;
-            
             try {
                 const ua = navigator.userAgent || navigator.vendor || window.opera;
-                const isSocialBrowser = (ua.indexOf('Instagram') > -1) || (ua.indexOf('FBAN') > -1) || (ua.indexOf('FBAV') > -1) || (ua.indexOf('Telegram') > -1);
+                const isSocialBrowser = (ua.indexOf('Instagram') > -1) || (ua.indexOf('FBAN') > -1) || (ua.indexOf('FBAV') > -1) || (ua.indexOf('Telegram') > -1) || (ua.indexOf('Messenger') > -1);
                 
-                if (isSocialBrowser) {
-                    await signInWithRedirect(auth, provider);
-                } else {
-                    await signInWithPopup(auth, provider);
-                }
+                if (isSocialBrowser) { await signInWithRedirect(auth, provider); } 
+                else { await signInWithPopup(auth, provider); }
             } catch (error) {
-                alert("Google Login error: Please try opening the app in Chrome browser.");
+                alert("Google Login error: Please try opening the app in Chrome/Safari browser.");
             } finally {
                 setButtonLoading('btn-google-login', false, 'Google Account', 'fa-brands fa-google text-red-500');
             }
         };
         
-        window.submitBulkTask = () => {
-            const fileInput = document.getElementById('bulk-file');
-            if(fileInput.files.length === 0) return alert("Select a file first!");
-            setButtonLoading('btn-bulk-submit', true, 'Uploading...', 'fa-solid fa-spinner');
-            setTimeout(() => { setButtonLoading('btn-bulk-submit', false, 'File Uploaded', 'fa-solid fa-check-double'); document.getElementById('btn-bulk-submit').disabled = true; alert("Bulk accounts successfully uploaded for review!"); setTimeout(() => closeTaskDetails(), 1500); }, 1500);
-        }
     </script>
 </body>
 </html>
