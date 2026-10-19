@@ -53,6 +53,10 @@
         
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
         input[type=file]::file-selector-button { background-color: #06b6d4; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background-color 0.2s ease; margin-right: 15px; }
+        
+        /* FIX: Ensure only one main section is visible at a time */
+        #auth-container { display: flex; }
+        #main-app-container { display: none; }
     </style>
 </head>
 <body class="flex justify-center h-screen w-full overflow-hidden bg-slate-50 dark:bg-darkBg text-slate-900 dark:text-zinc-50 relative">
@@ -80,7 +84,7 @@
     <!-- ========================================== -->
     <!-- 1. AUTHENTICATION SECTION                  -->
     <!-- ========================================== -->
-    <div id="auth-container" class="hidden w-full max-w-md h-full flex-col justify-center px-6 relative z-40 bg-slate-50 dark:bg-darkBg transition-colors fade-in">
+    <div id="auth-container" class="w-full max-w-md h-full flex-col justify-center px-6 relative z-40 bg-slate-50 dark:bg-darkBg transition-colors fade-in">
         
         <div class="flex flex-col items-center mb-6 float-1">
             <div class="h-16 w-16 rounded-2xl bg-gradient-to-tr from-cyan-500 to-emerald-500 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)] mb-4 relative overflow-hidden">
@@ -164,7 +168,7 @@
     <!-- ========================================== -->
     <!-- 2. MAIN APP SECTION (Dashboard)            -->
     <!-- ========================================== -->
-    <div id="main-app-container" class="w-full max-w-md h-full relative flex flex-col bg-slate-50 dark:bg-darkBg transition-colors overflow-hidden hidden">
+    <div id="main-app-container" class="w-full max-w-md h-full relative flex-col bg-slate-50 dark:bg-darkBg transition-colors overflow-hidden">
         
         <header class="p-5 flex justify-between items-center z-10 border-b border-slate-200 dark:border-zinc-800 shadow-sm bg-white/50 dark:bg-[#09090b]/50 backdrop-blur-md">
             <div>
@@ -547,7 +551,6 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Correct Config without browser blocks
         const firebaseConfig = {
             apiKey: "AIzaSyDB7fXgHjnMA2wQwmvU4eOycHjiRIoVn5U",
             authDomain: "microtask-pro-bb3a0.firebaseapp.com",
@@ -562,8 +565,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
-        
-        // Fix for Telegram/In-App Browsers
         provider.setCustomParameters({ prompt: 'select_account' });
         
         let verifyInterval;
@@ -571,13 +572,18 @@
         onAuthStateChanged(auth, async (user) => {
             try {
                 if (user && user.emailVerified) {
-                    const userRef = doc(db, "users", user.uid);
-                    const userSnap = await getDoc(userRef);
-                    if(!userSnap.exists()){
-                        const defaultName = user.displayName || user.email.split('@')[0];
-                        await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                    // Safe Document Creation (handles if rule blocks creation for some reason)
+                    try {
+                        const userRef = doc(db, "users", user.uid);
+                        const userSnap = await getDoc(userRef);
+                        if(!userSnap.exists()){
+                            const defaultName = user.displayName || user.email.split('@')[0];
+                            await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                        }
+                    } catch(err) {
+                        console.log("DB Initialization handled:", err);
                     }
-                    showAppUI(user, true); // True means no login animation needed
+                    showAppUI(user, true);
                     loadDatabaseRealtime(user); 
                 } else if(user && !user.emailVerified) { 
                     auth.signOut(); showAuthScreen(); 
@@ -587,12 +593,41 @@
             } catch(e) {
                 console.error(e);
                 auth.signOut(); showAuthScreen();
-                alert("Database Connection Error. Please refresh.");
             }
         });
 
-        function showAuthScreen() { document.getElementById('global-loader').style.display = 'none'; document.getElementById('auth-container').style.display = 'flex'; document.getElementById('auth-theme-btn').style.display = 'flex'; }
+        function showAuthScreen() { 
+            document.getElementById('global-loader').style.display = 'none'; 
+            document.getElementById('auth-container').style.display = 'flex'; 
+            document.getElementById('main-app-container').style.display = 'none'; 
+            document.getElementById('auth-theme-btn').style.display = 'flex'; 
+        }
         
+        function showAppUI(user, instant = false) {
+            document.getElementById('global-loader').style.display = 'none'; 
+            document.getElementById('auth-container').style.display = 'none'; 
+            document.getElementById('auth-theme-btn').style.display = 'none';
+            
+            if(instant) { 
+                document.getElementById('main-app-container').style.display = 'flex'; 
+                switchAppTab('home'); 
+            } else {
+                const displayName = user.displayName || user.email.split('@')[0];
+                const successScreen = document.getElementById('success-screen');
+                document.getElementById('success-name').innerText = displayName; 
+                successScreen.classList.remove('opacity-0', 'pointer-events-none');
+                
+                setTimeout(() => { 
+                    successScreen.classList.add('opacity-0', 'pointer-events-none'); 
+                    setTimeout(() => { 
+                        document.getElementById('main-app-container').style.display = 'flex'; 
+                        document.getElementById('main-app-container').classList.add('fade-in'); 
+                        switchAppTab('home'); 
+                    }, 300); 
+                }, 1500);
+            }
+        }
+
         window.logoutUser = () => { 
             document.getElementById('global-loader').style.display = 'flex';
             document.getElementById('loader-text').innerText = "Signing out securely...";
@@ -650,12 +685,12 @@
                 document.getElementById('profile-tab-name').innerHTML = displayName + verifyTickHTML;
 
                 if(document.getElementById('global-loader').style.display !== 'none') {
-                    document.getElementById('global-loader').style.display = 'none'; document.getElementById('auth-container').style.display = 'none';
                     if (isFreshLogin) {
-                        const successScreen = document.getElementById('success-screen'); document.getElementById('success-name').innerText = displayName; successScreen.classList.remove('opacity-0', 'pointer-events-none');
-                        setTimeout(() => { successScreen.classList.add('opacity-0', 'pointer-events-none'); setTimeout(() => { document.getElementById('main-app-container').classList.remove('hidden'); document.getElementById('main-app-container').classList.add('fade-in'); switchAppTab('home'); }, 300); }, 1500);
+                        showAppUI(auth.currentUser, false);
                         isFreshLogin = false;
-                    } else { document.getElementById('main-app-container').classList.remove('hidden'); switchAppTab('home'); }
+                    } else { 
+                        showAppUI(auth.currentUser, true); 
+                    }
                 }
             });
 
@@ -769,17 +804,6 @@
             } catch (error) { setButtonLoading('btn-save-settings', false, 'Save Changes', 'fa-solid fa-floppy-disk'); alert("Error: " + error.message); }
         }
 
-        function showAppUI(user, instant = false) {
-            document.getElementById('global-loader').style.display = 'none'; document.getElementById('auth-container').style.display = 'none'; document.getElementById('auth-theme-btn').style.display = 'none';
-            if(instant) { 
-                document.getElementById('main-app-container').classList.remove('hidden'); switchAppTab('home'); 
-            } else {
-                const displayName = user.displayName || user.email.split('@')[0], successScreen = document.getElementById('success-screen');
-                document.getElementById('success-name').innerText = displayName; successScreen.classList.remove('opacity-0', 'pointer-events-none');
-                setTimeout(() => { successScreen.classList.add('opacity-0', 'pointer-events-none'); setTimeout(() => { document.getElementById('main-app-container').classList.remove('hidden'); document.getElementById('main-app-container').classList.add('fade-in'); switchAppTab('home'); }, 300); }, 1500);
-            }
-        }
-
         window.registerUser = () => {
             const name = document.getElementById('reg-name').value, email = document.getElementById('reg-email').value, password = document.getElementById('reg-password').value;
             if(!name || !email || !password) return alert("Please fill all fields!"); if(password.length < 6) return alert("Password min 6 chars.");
@@ -794,8 +818,13 @@
                             await auth.currentUser.reload();
                             if (auth.currentUser.emailVerified) { 
                                 clearInterval(verifyInterval); modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('verify-modal-content').classList.add('scale-95'); 
-                                await setDoc(doc(db, "users", auth.currentUser.uid), { name: name, email: email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
-                                showAppUI(auth.currentUser); loadDatabaseRealtime(auth.currentUser);
+                                
+                                try {
+                                    const userRef = doc(db, "users", auth.currentUser.uid);
+                                    await setDoc(userRef, { name: name, email: email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                                } catch(err) { console.log("DB Init Check:", err); }
+                                
+                                showAppUI(auth.currentUser, false); loadDatabaseRealtime(auth.currentUser);
                             }
                         }, 3000);
                     });
@@ -810,7 +839,6 @@
             setButtonLoading('btn-login-submit', true); isFreshLogin = true;
             signInWithEmailAndPassword(auth, email, password).then((cred) => {
                 if(!cred.user.emailVerified) { setButtonLoading('btn-login-submit', false, 'Login', 'fa-solid fa-right-to-bracket'); alert("Please verify email first!"); auth.signOut(); }
-                // DB snapshot will handle loading the app
             }).catch((e) => { setButtonLoading('btn-login-submit', false, 'Login', 'fa-solid fa-right-to-bracket'); alert("Login Failed: Incorrect email or password."); });
         };
 
@@ -819,7 +847,7 @@
             isFreshLogin = true;
             try {
                 const result = await signInWithPopup(auth, provider);
-                // The onAuthStateChanged will handle the rest, including adding to DB and showing app
+                // onAuthStateChanged handles UI rendering
             } catch (error) {
                 setButtonLoading('btn-google-login', false, 'Google Account', 'fa-brands fa-google text-red-500'); 
                 alert("Google Login error: Make sure this domain is added in Firebase Auth settings.");
