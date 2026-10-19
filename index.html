@@ -45,9 +45,6 @@
         @keyframes floatUpFade { 0% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -30px) scale(1.1); } }
         .copy-floater { position: absolute; top: 0; left: 50%; transform: translateX(-50%); color: #10b981; font-weight: bold; font-size: 14px; animation: floatUpFade 0.6s forwards; pointer-events: none; text-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 100; }
         
-        .slide-in-right { animation: slideInRight 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
-        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0.5; } to { transform: translateX(0); opacity: 1; } }
-        
         .slide-indicator { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .form-panel { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         
@@ -60,13 +57,28 @@
 </head>
 <body class="flex justify-center h-screen w-full overflow-hidden bg-slate-50 dark:bg-darkBg text-slate-900 dark:text-zinc-50 relative">
 
-    <!-- GLOBAL LOADER -->
+    <!-- GLOBAL LOADER (With Safety Timeout) -->
     <div id="global-loader" class="fixed inset-0 z-[999] bg-slate-50 dark:bg-darkBg flex items-center justify-center transition-colors">
         <div class="flex flex-col items-center">
             <i class="fa-solid fa-spinner animate-spin text-4xl text-cyan-500 mb-3"></i>
             <p id="loader-text" class="text-sm font-bold text-slate-500 dark:text-zinc-400">Loading MicroTask Pro...</p>
         </div>
     </div>
+
+    <!-- Safety Fallback Loader Script -->
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                const loader = document.getElementById('global-loader');
+                if(loader && !loader.classList.contains('hidden')) {
+                    loader.style.display = 'none';
+                    loader.classList.add('hidden');
+                    const authC = document.getElementById('auth-container');
+                    if(authC) { authC.style.display = 'flex'; authC.classList.remove('hidden'); }
+                }
+            }, 6000); // Force hide loader after 6 seconds if DB blocked
+        });
+    </script>
 
     <button id="auth-theme-btn" onclick="toggleTheme()" class="hidden absolute top-6 right-6 h-10 w-10 rounded-full bg-white dark:bg-darkCard border border-slate-200 dark:border-zinc-700 items-center justify-center shadow-sm z-50 active:scale-95 transition-transform">
         <i id="theme-icon" class="fa-solid fa-moon text-indigo-500 text-lg"></i>
@@ -234,7 +246,7 @@
                 </div>
                 
                 <!-- Fixed Scrollable Area for Leaderboard -->
-                <div class="relative w-full" id="lb-slider-container">
+                <div class="w-full" id="lb-slider-container">
                     <div id="lb-approved" class="w-full fade-in">
                         <div class="light-pass bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-2xl mb-3 flex items-center gap-4 border-2 border-cyan-400 dark:border-cyan-500 shadow-md">
                             <h1 class="text-2xl font-black text-cyan-600 dark:text-cyan-400 w-6 text-center">★</h1>
@@ -683,66 +695,77 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyDB7fXgHjnMA2wQwmvU4eOycHjiRIoVn5U",
-            authDomain: "microtask-pro-bb3a0.firebaseapp.com",
-            projectId: "microtask-pro-bb3a0",
-            storageBucket: "microtask-pro-bb3a0.firebasestorage.app",
-            messagingSenderId: "1032963267282",
-            appId: "1:1032963267282:web:a5ec4fba2699c32922ab0b",
-            measurementId: "G-1H11MKMNLP"
-        };
+        // Try-Catch block wrapper to prevent script crash if IndexedDB is blocked
+        let app, auth, db, provider;
+        try {
+            const firebaseConfig = {
+                apiKey: "AIzaSyDB7fXgHjnMA2wQwmvU4eOycHjiRIoVn5U",
+                authDomain: "microtask-pro-bb3a0.firebaseapp.com",
+                projectId: "microtask-pro-bb3a0",
+                storageBucket: "microtask-pro-bb3a0.firebasestorage.app",
+                messagingSenderId: "1032963267282",
+                appId: "1:1032963267282:web:a5ec4fba2699c32922ab0b",
+                measurementId: "G-1H11MKMNLP"
+            };
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
-        provider.setCustomParameters({ prompt: 'select_account' });
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            provider = new GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
+        } catch(err) {
+            console.error("Firebase Initialization Failed:", err);
+            document.getElementById('global-loader').style.display = 'none';
+            document.getElementById('auth-container').style.display = 'flex';
+            alert("Database Error: Try opening the link in Chrome/Safari instead of in-app browser.");
+        }
         
         let verifyInterval, timerInterval;
         let verifyTimeLeft = 300;
         let isRegistering = false;
 
         // Redirect result for in-app browsers
-        getRedirectResult(auth).then((result) => {
-            if (result) { isFreshLogin = true; }
-        }).catch((error) => { console.error("Redirect Error:", error); });
+        if(auth) {
+            getRedirectResult(auth).then((result) => {
+                if (result) { isFreshLogin = true; }
+            }).catch((error) => { console.error("Redirect Error:", error); });
 
-        onAuthStateChanged(auth, async (user) => {
-            
-            // Remove Loader explicitly first
-            document.getElementById('global-loader').style.display = 'none';
-            document.getElementById('global-loader').classList.add('hidden');
-            
-            try {
-                if (user) {
-                    // ভেরিফিকেশন পেন্ডিং থাকলে 
-                    if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
-                        if (isRegistering) return; 
-                        startVerificationCheck(user); 
-                        return;
-                    }
-                    
-                    try {
-                        const userRef = doc(db, "users", user.uid);
-                        const userSnap = await getDoc(userRef);
-                        if(!userSnap.exists()){
-                            const defaultName = user.displayName || user.email.split('@')[0];
-                            await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+            onAuthStateChanged(auth, async (user) => {
+                
+                // Explicitly force hide loader on auth state ping
+                document.getElementById('global-loader').style.display = 'none';
+                document.getElementById('global-loader').classList.add('hidden');
+                
+                try {
+                    if (user) {
+                        // Verification check
+                        if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
+                            if (isRegistering) return; 
+                            startVerificationCheck(user); 
+                            return;
                         }
-                    } catch(err) { console.log("DB handled:", err); }
-                    
-                    showAppUI(user, !isFreshLogin);
-                    loadDatabaseRealtime(user); 
-                    isFreshLogin = false;
-                } else { 
-                    showAuthScreen(); 
+                        
+                        try {
+                            const userRef = doc(db, "users", user.uid);
+                            const userSnap = await getDoc(userRef);
+                            if(!userSnap.exists()){
+                                const defaultName = user.displayName || user.email.split('@')[0];
+                                await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                            }
+                        } catch(err) { console.log("DB setup handled:", err); }
+                        
+                        showAppUI(user, !isFreshLogin);
+                        loadDatabaseRealtime(user); 
+                        isFreshLogin = false;
+                    } else { 
+                        showAuthScreen(); 
+                    }
+                } catch(e) {
+                    console.error("Auth State Error:", e);
+                    auth.signOut(); showAuthScreen();
                 }
-            } catch(e) {
-                console.error(e);
-                auth.signOut(); showAuthScreen();
-            }
-        });
+            });
+        }
 
         // 5 Minutes Verification Logic 
         function startVerificationCheck(user) {
@@ -832,7 +855,6 @@
             document.getElementById('main-app-container').style.display = 'none'; 
             document.getElementById('auth-theme-btn').style.display = 'flex'; 
             
-            // Clean inputs to avoid saved admin emails
             setTimeout(() => {
                 document.getElementById('login-email').value = ''; document.getElementById('login-password').value = '';
                 document.getElementById('reg-name').value = ''; document.getElementById('reg-email').value = ''; document.getElementById('reg-password').value = '';
@@ -920,7 +942,7 @@
 
                 document.getElementById('user-display-name-app').innerHTML = displayName + verifyTickHTML;
                 document.getElementById('profile-tab-name').innerHTML = displayName + verifyTickHTML;
-            });
+            }, (error) => console.error("User Snap Error:", error));
 
             onSnapshot(collection(db, "tasks"), (snapshot) => {
                 const list = document.getElementById('task-list-container');
@@ -938,7 +960,7 @@
                         html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', ${data.require2FA},${data.requireCookies}, '${data.platform \vert{}\vert{} 'facebook'}', '${safePass}')`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}"><div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div><div class="flex justify-between items-center"><div class="flex gap-3 items-center"><div class="h-10 w-10 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center text-2xl drop-shadow-md"><i class="fa-brands fa-${data.platform || 'facebook'}"></i></div><div><p class="font-bold text-sm">${data.title}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">${data.require2FA ? '2FA • ' : ''}${data.requireCookies ? 'Cookies' : 'Simple Task'}</p></div></div><span class="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">${doneText}</span></div></div>`;
                     }); list.innerHTML = html;
                 }
-            });
+            }, (error) => console.error("Tasks Snap Error:", error));
 
             onSnapshot(collection(db, "notices"), (snapshot) => {
                 const list = document.getElementById('notif-list'), badge = document.getElementById('notif-badge');
@@ -952,13 +974,13 @@
                 });
                 if(newCount === 0) { list.innerHTML = ''; list.style.display = 'none'; document.getElementById('notif-empty').style.display = 'flex'; badge.style.display='none'; } 
                 else { document.getElementById('notif-empty').style.display = 'none'; list.style.display = 'block'; badge.style.display='block'; list.innerHTML = html; }
-            });
+            }, (error) => console.error("Notices Snap Error:", error));
 
             onSnapshot(query(collection(db, "payment_methods"), where("isActive", "==", true)), (snapshot) => {
                 const select = document.getElementById('withdraw-method'); let html = '';
                 snapshot.forEach((docSnap) => { html += `<option value="${docSnap.data().name}">${docSnap.data().name}</option>`; });
                 select.innerHTML = html || '<option value="">No methods available</option>';
-            });
+            }, (error) => console.error("Payments Snap Error:", error));
 
             onSnapshot(query(collection(db, "withdrawals"), where("uid", "==", uid)), (snapshot) => {
                 const list = document.getElementById('withdraw-history-list');
@@ -970,7 +992,7 @@
                         html += `<div class="bg-white dark:bg-darkCard p-3 rounded-xl flex items-center justify-between border border-slate-200 dark:border-zinc-800 shadow-sm"><div class="flex items-center gap-3"><div class="h-10 w-10 rounded-full bg-cyan-100 dark:bg-cyan-500/10 flex items-center justify-center text-cyan-500"><i class="fa-solid fa-building-columns"></i></div><div><p class="font-bold text-sm capitalize">${data.method}</p></div></div><div class="text-right"><p class="font-bold text-sm">৳ ${data.amount}</p><span class="text-[9px] font-bold bg-${sColor}-100 text-${sColor}-600 dark:bg-${sColor}-500/20 px-2 py-0.5 rounded uppercase">${data.status}</span></div></div>`;
                     }); list.innerHTML = html;
                 }
-            });
+            }, (error) => console.error("Withdrawals Snap Error:", error));
 
             onSnapshot(query(collection(db, "users"), orderBy("totalEarned", "desc"), limit(10)), (snapshot) => {
                 const listA = document.getElementById('lb-approved-list'); let htmlA = ''; let rank = 1;
@@ -978,7 +1000,7 @@
                     const data = docSnap.data();
                     htmlA += `<div class="bg-yellow-50 dark:bg-yellow-500/5 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-yellow-200 dark:border-yellow-500/30"><h1 class="text-2xl font-black text-yellow-500 w-6 text-center">${rank++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-yellow-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400">${data.approvedTasks || 0} Tasks done</p></div><p class="text-emerald-600 dark:text-emerald-400 font-bold">৳ ${data.totalEarned || 0}</p></div>`;
                 }); listA.innerHTML = htmlA;
-            });
+            }, (error) => console.error("Leaderboard Snap Error:", error));
         }
 
         window.submitKYC = async () => {
