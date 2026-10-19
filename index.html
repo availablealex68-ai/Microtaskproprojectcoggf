@@ -15,6 +15,9 @@
     <style>
         body { font-family: 'Inter', sans-serif; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
         ::-webkit-scrollbar { display: none; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        
         * { transition: background-color 0.2s ease, border-color 0.2s ease; will-change: transform, opacity; }
         
         .float-1 { animation: floating 4s ease-in-out infinite; }
@@ -45,6 +48,9 @@
         @keyframes floatUpFade { 0% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -30px) scale(1.1); } }
         .copy-floater { position: absolute; top: 0; left: 50%; transform: translateX(-50%); color: #10b981; font-weight: bold; font-size: 14px; animation: floatUpFade 0.6s forwards; pointer-events: none; text-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 100; }
         
+        .slide-in-right { animation: slideInRight 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+        @keyframes slideInRight { from { transform: translateX(100%); opacity: 0.5; } to { transform: translateX(0); opacity: 1; } }
+        
         .slide-indicator { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .form-panel { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         
@@ -57,28 +63,12 @@
 </head>
 <body class="flex justify-center h-screen w-full overflow-hidden bg-slate-50 dark:bg-darkBg text-slate-900 dark:text-zinc-50 relative">
 
-    <!-- GLOBAL LOADER (With Safety Timeout) -->
     <div id="global-loader" class="fixed inset-0 z-[999] bg-slate-50 dark:bg-darkBg flex items-center justify-center transition-colors">
         <div class="flex flex-col items-center">
             <i class="fa-solid fa-spinner animate-spin text-4xl text-cyan-500 mb-3"></i>
             <p id="loader-text" class="text-sm font-bold text-slate-500 dark:text-zinc-400">Loading MicroTask Pro...</p>
         </div>
     </div>
-
-    <!-- Safety Fallback Loader Script -->
-    <script>
-        window.addEventListener('DOMContentLoaded', () => {
-            setTimeout(() => {
-                const loader = document.getElementById('global-loader');
-                if(loader && !loader.classList.contains('hidden')) {
-                    loader.style.display = 'none';
-                    loader.classList.add('hidden');
-                    const authC = document.getElementById('auth-container');
-                    if(authC) { authC.style.display = 'flex'; authC.classList.remove('hidden'); }
-                }
-            }, 6000); // Force hide loader after 6 seconds if DB blocked
-        });
-    </script>
 
     <button id="auth-theme-btn" onclick="toggleTheme()" class="hidden absolute top-6 right-6 h-10 w-10 rounded-full bg-white dark:bg-darkCard border border-slate-200 dark:border-zinc-700 items-center justify-center shadow-sm z-50 active:scale-95 transition-transform">
         <i id="theme-icon" class="fa-solid fa-moon text-indigo-500 text-lg"></i>
@@ -244,22 +234,20 @@
                         <button onclick="toggleLeaderboard('pending')" id="btn-lb-pending" class="flex-1 relative z-10 py-2 text-sm font-bold text-slate-500 dark:text-zinc-400 transition-colors">Pending</button>
                     </div>
                 </div>
-                
-                <!-- Fixed Scrollable Area for Leaderboard -->
-                <div class="w-full" id="lb-slider-container">
-                    <div id="lb-approved" class="w-full fade-in">
-                        <div class="light-pass bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-2xl mb-3 flex items-center gap-4 border-2 border-cyan-400 dark:border-cyan-500 shadow-md">
+                <div class="relative w-full overflow-hidden h-[55vh]" id="lb-slider-container">
+                    <div id="lb-approved" class="absolute w-full h-full top-0 left-0 transition-transform duration-300 transform translate-x-0 opacity-100 z-10 flex flex-col">
+                        <div class="light-pass shrink-0 bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-2xl mb-3 flex items-center gap-4 border-2 border-cyan-400 dark:border-cyan-500 shadow-md">
                             <h1 class="text-2xl font-black text-cyan-600 dark:text-cyan-400 w-6 text-center">★</h1>
                             <img id="lb-current-user-pic" src="" class="h-12 w-12 rounded-full border-2 border-cyan-400 dark:border-cyan-500 object-cover bg-slate-200">
                             <div class="flex-1"><p class="font-bold text-sm text-cyan-700 dark:text-cyan-300">You <span id="lb-current-name">(User)</span> <span class="verify-badge hidden"><i class="fa-solid fa-circle-check text-cyan-500 text-sm ml-1"></i></span></p><p class="text-[11px] text-cyan-600/70 dark:text-cyan-400/70"><span id="lb-my-approved">0</span> Tasks done</p></div>
                             <p class="text-emerald-600 dark:text-emerald-400 font-bold">৳ <span id="lb-my-earned">0</span></p>
                         </div>
-                        <div id="lb-approved-list" class="space-y-3 pb-6">
+                        <div id="lb-approved-list" class="space-y-3 overflow-y-auto flex-1 pb-24 scrollbar-hide">
                             <p class="text-center text-sm text-slate-500 py-4">Loading Leaderboard...</p>
                         </div>
                     </div>
-                    <div id="lb-pending" class="w-full fade-in hidden">
-                        <div id="lb-pending-list" class="space-y-3 pb-6">
+                    <div id="lb-pending" class="absolute w-full h-full top-0 left-0 transition-transform duration-300 transform translate-x-full opacity-0 pointer-events-none z-0 flex flex-col">
+                        <div id="lb-pending-list" class="space-y-3 overflow-y-auto flex-1 pb-24 scrollbar-hide">
                             <p class="text-center text-sm text-slate-500 py-4">Loading Leaderboard...</p>
                         </div>
                     </div>
@@ -473,7 +461,7 @@
         let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let activeTaskRequires2FA = false; let activeTaskRequiresCookies = false; let submittedTaskIds = []; let isFreshLogin = false;
         
         let activeTaskPlatform = ''; let activeTaskPassword = ''; 
-        let currentOverlay = null; // Overlay Back button tracker
+        let currentOverlay = null;
 
         function togglePasswordVisibility(inputId, iconId) {
             const input = document.getElementById(inputId), icon = document.getElementById(iconId);
@@ -508,7 +496,6 @@
             }
         }
 
-        // --- Back Button Navigation & Overlays --- //
         function openOverlay(id) {
             document.getElementById(id).style.display = 'flex';
             document.getElementById('bottom-nav').style.display = 'none';
@@ -543,26 +530,11 @@
         function closeNotifications() { if(currentOverlay==='notif-overlay') history.back(); else closeAnyOverlay('notif-overlay'); }
         
         function closeTaskDetails() { if(currentOverlay==='task-detail-overlay') history.back(); else closeAnyOverlay('task-detail-overlay'); }
-        // ---------------------------------------- //
 
         function toggleLeaderboard(type) { 
             const lbApproved = document.getElementById('lb-approved'), lbPending = document.getElementById('lb-pending'), indicator = document.getElementById('lb-indicator'), btnApproved = document.getElementById('btn-lb-approved'), btnPending = document.getElementById('btn-lb-pending'); 
-            
-            if(type === 'pending') { 
-                indicator.style.transform = 'translateX(100%)'; 
-                btnApproved.classList.replace('text-slate-900', 'text-slate-500'); btnApproved.classList.replace('dark:text-white', 'dark:text-zinc-400'); 
-                btnPending.classList.replace('text-slate-500', 'text-slate-900'); btnPending.classList.replace('dark:text-zinc-400', 'dark:text-white'); 
-                
-                lbApproved.classList.add('hidden');
-                lbPending.classList.remove('hidden');
-            } else { 
-                indicator.style.transform = 'translateX(0)'; 
-                btnPending.classList.replace('text-slate-900', 'text-slate-500'); btnPending.classList.replace('dark:text-white', 'dark:text-zinc-400'); 
-                btnApproved.classList.replace('text-slate-500', 'text-slate-900'); btnApproved.classList.replace('dark:text-zinc-400', 'dark:text-white'); 
-                
-                lbPending.classList.add('hidden');
-                lbApproved.classList.remove('hidden');
-            } 
+            if(type === 'pending') { indicator.style.transform = 'translateX(100%)'; btnApproved.classList.replace('text-slate-900', 'text-slate-500'); btnApproved.classList.replace('dark:text-white', 'dark:text-zinc-400'); btnPending.classList.replace('text-slate-500', 'text-slate-900'); btnPending.classList.replace('dark:text-zinc-400', 'dark:text-white'); lbApproved.style.transform = 'translateX(-100%)'; lbApproved.style.opacity = '0'; lbApproved.classList.add('pointer-events-none'); lbPending.style.transform = 'translateX(0)'; lbPending.style.opacity = '1'; lbPending.classList.remove('pointer-events-none'); } 
+            else { indicator.style.transform = 'translateX(0)'; btnPending.classList.replace('text-slate-900', 'text-slate-500'); btnPending.classList.replace('dark:text-white', 'dark:text-zinc-400'); btnApproved.classList.replace('text-slate-500', 'text-slate-900'); btnApproved.classList.replace('dark:text-zinc-400', 'dark:text-white'); lbPending.style.transform = 'translateX(100%)'; lbPending.style.opacity = '0'; lbPending.classList.add('pointer-events-none'); lbApproved.style.transform = 'translateX(0)'; lbApproved.style.opacity = '1'; lbApproved.classList.remove('pointer-events-none'); } 
         }
         
         window.clearNotifications = () => { 
@@ -616,7 +588,6 @@
                 const fName = firstNames[Math.floor(Math.random()*firstNames.length)];
                 const lName = lastNames[Math.floor(Math.random()*lastNames.length)];
                 
-                // Max 30 chars rule, with '_' and '-'
                 const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
                 let uname = fName.toLowerCase() + '_' + lName.toLowerCase() + '-';
                 for(let i=0; i<4; i++) uname += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -642,7 +613,6 @@
                 html += `<div onclick="copyData('${data.firstName}', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">First Name</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400">${data.firstName}</p></div>`;
                 html += `<div onclick="copyData('${data.lastName}', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">Last Name</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400">${data.lastName}</p></div>`;
             }
-            // Add Password box
             html += `<div onclick="copyData('${passToShow}', this)" class="col-span-2 bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">Password</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400 tracking-wider">${passToShow}</p></div>`;
             
             credContainer.innerHTML = html;
@@ -660,8 +630,6 @@
         window.copyData = (text, element) => { 
             navigator.clipboard.writeText(text); 
             showFloatingText('Copied!', element); 
-            
-            // Change color to green on copy
             element.classList.remove('bg-white', 'dark:bg-darkCard', 'border-slate-200', 'dark:border-zinc-700');
             element.classList.add('bg-emerald-50', 'dark:bg-emerald-500/10', 'border-emerald-400', 'dark:border-emerald-500/50');
         }
@@ -692,88 +660,68 @@
     <!-- FIREBASE DB & AUTH API SCRIPTS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Try-Catch block wrapper to prevent script crash if IndexedDB is blocked
-        let app, auth, db, provider;
-        try {
-            const firebaseConfig = {
-                apiKey: "AIzaSyDB7fXgHjnMA2wQwmvU4eOycHjiRIoVn5U",
-                authDomain: "microtask-pro-bb3a0.firebaseapp.com",
-                projectId: "microtask-pro-bb3a0",
-                storageBucket: "microtask-pro-bb3a0.firebasestorage.app",
-                messagingSenderId: "1032963267282",
-                appId: "1:1032963267282:web:a5ec4fba2699c32922ab0b",
-                measurementId: "G-1H11MKMNLP"
-            };
+        const firebaseConfig = {
+            apiKey: "AIzaSyDB7fXgHjnMA2wQwmvU4eOycHjiRIoVn5U",
+            authDomain: "microtask-pro-bb3a0.firebaseapp.com",
+            projectId: "microtask-pro-bb3a0",
+            storageBucket: "microtask-pro-bb3a0.firebasestorage.app",
+            messagingSenderId: "1032963267282",
+            appId: "1:1032963267282:web:a5ec4fba2699c32922ab0b",
+            measurementId: "G-1H11MKMNLP"
+        };
 
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-            provider = new GoogleAuthProvider();
-            provider.setCustomParameters({ prompt: 'select_account' });
-        } catch(err) {
-            console.error("Firebase Initialization Failed:", err);
-            document.getElementById('global-loader').style.display = 'none';
-            document.getElementById('auth-container').style.display = 'flex';
-            alert("Database Error: Try opening the link in Chrome/Safari instead of in-app browser.");
-        }
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: 'select_account' });
         
         let verifyInterval, timerInterval;
         let verifyTimeLeft = 300;
         let isRegistering = false;
 
-        // Redirect result for in-app browsers
-        if(auth) {
-            getRedirectResult(auth).then((result) => {
-                if (result) { isFreshLogin = true; }
-            }).catch((error) => { console.error("Redirect Error:", error); });
+        setPersistence(auth, browserLocalPersistence).catch((error) => { console.error("Persistence Error:", error); });
 
-            onAuthStateChanged(auth, async (user) => {
-                
-                // Explicitly force hide loader on auth state ping
-                document.getElementById('global-loader').style.display = 'none';
-                document.getElementById('global-loader').classList.add('hidden');
-                
-                try {
-                    if (user) {
-                        // Verification check
-                        if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
-                            if (isRegistering) return; 
-                            startVerificationCheck(user); 
-                            return;
-                        }
-                        
-                        try {
-                            const userRef = doc(db, "users", user.uid);
-                            const userSnap = await getDoc(userRef);
-                            if(!userSnap.exists()){
-                                const defaultName = user.displayName || user.email.split('@')[0];
-                                await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
-                            }
-                        } catch(err) { console.log("DB setup handled:", err); }
-                        
-                        showAppUI(user, !isFreshLogin);
-                        loadDatabaseRealtime(user); 
-                        isFreshLogin = false;
-                    } else { 
-                        showAuthScreen(); 
+        getRedirectResult(auth).then((result) => {
+            if (result) { isFreshLogin = true; }
+        }).catch((error) => { console.error("Redirect Error:", error); });
+
+        onAuthStateChanged(auth, async (user) => {
+            try {
+                if (user) {
+                    if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
+                        if (isRegistering) return; 
+                        startVerificationCheck(user); 
+                        return;
                     }
-                } catch(e) {
-                    console.error("Auth State Error:", e);
-                    auth.signOut(); showAuthScreen();
+                    
+                    try {
+                        const userRef = doc(db, "users", user.uid);
+                        const userSnap = await getDoc(userRef);
+                        if(!userSnap.exists()){
+                            const defaultName = user.displayName || user.email.split('@')[0];
+                            await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                        }
+                    } catch(err) { console.log("DB handled:", err); }
+                    
+                    showAppUI(user, !isFreshLogin);
+                    loadDatabaseRealtime(user); 
+                    isFreshLogin = false;
+                } else { 
+                    showAuthScreen(); 
                 }
-            });
-        }
+            } catch(e) {
+                console.error(e);
+                auth.signOut(); showAuthScreen();
+            }
+        });
 
-        // 5 Minutes Verification Logic 
         function startVerificationCheck(user) {
             document.getElementById('global-loader').style.display = 'none'; 
-            const authC = document.getElementById('auth-container');
-            authC.style.display = 'flex'; 
-            authC.classList.remove('hidden');
-            
+            document.getElementById('auth-container').style.display = 'flex'; 
             document.getElementById('main-app-container').style.display = 'none';
             
             const modal = document.getElementById('verify-modal');
@@ -846,12 +794,7 @@
 
         function showAuthScreen() { 
             document.getElementById('global-loader').style.display = 'none'; 
-            document.getElementById('global-loader').classList.add('hidden');
-            
-            const authC = document.getElementById('auth-container');
-            authC.style.display = 'flex'; 
-            authC.classList.remove('hidden');
-            
+            document.getElementById('auth-container').style.display = 'flex'; 
             document.getElementById('main-app-container').style.display = 'none'; 
             document.getElementById('auth-theme-btn').style.display = 'flex'; 
             
@@ -863,12 +806,7 @@
         
         function showAppUI(user, instant = false) {
             document.getElementById('global-loader').style.display = 'none'; 
-            document.getElementById('global-loader').classList.add('hidden');
-            
-            const authC = document.getElementById('auth-container');
-            authC.style.display = 'none'; 
-            authC.classList.add('hidden');
-            
+            document.getElementById('auth-container').style.display = 'none'; 
             document.getElementById('auth-theme-btn').style.display = 'none';
             
             if(instant) { 
@@ -942,7 +880,7 @@
 
                 document.getElementById('user-display-name-app').innerHTML = displayName + verifyTickHTML;
                 document.getElementById('profile-tab-name').innerHTML = displayName + verifyTickHTML;
-            }, (error) => console.error("User Snap Error:", error));
+            });
 
             onSnapshot(collection(db, "tasks"), (snapshot) => {
                 const list = document.getElementById('task-list-container');
@@ -954,13 +892,16 @@
                         const data = docSnap.data(); const isDone = submittedTaskIds.includes(docSnap.id);
                         const doneClass = isDone ? 'opacity-50 pointer-events-none' : 'cursor-pointer active:scale-95 transition-transform';
                         const doneText = isDone ? 'Submitted' : `৳ ${data.reward}`;
-                        const safeTitle = (data.title || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                        const safeDesc = (data.desc || '').replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, "\\n");
-                        const safePass = (data.password || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                        html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', ${data.require2FA},${data.requireCookies}, '${data.platform \vert{}\vert{} 'facebook'}', '${safePass}')`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}"><div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div><div class="flex justify-between items-center"><div class="flex gap-3 items-center"><div class="h-10 w-10 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center text-2xl drop-shadow-md"><i class="fa-brands fa-${data.platform || 'facebook'}"></i></div><div><p class="font-bold text-sm">${data.title}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">${data.require2FA ? '2FA • ' : ''}${data.requireCookies ? 'Cookies' : 'Simple Task'}</p></div></div><span class="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">${doneText}</span></div></div>`;
+                        
+                        const safeTitle = String(data.title || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                        const safeDesc = String(data.desc || '').replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, "\\n");
+                        const safePass = String(data.password || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                        const safePlatform = String(data.platform || 'facebook').replace(/'/g, "\\'");
+                        
+                        html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', ${!!data.require2FA},${!!data.requireCookies}, '${safePlatform}', '${safePass}')`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}"><div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div><div class="flex justify-between items-center"><div class="flex gap-3 items-center"><div class="h-10 w-10 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center text-2xl drop-shadow-md"><i class="fa-brands fa-${data.platform || 'facebook'}"></i></div><div><p class="font-bold text-sm">${data.title}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">${data.require2FA ? '2FA • ' : ''}${data.requireCookies ? 'Cookies' : 'Simple Task'}</p></div></div><span class="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">${doneText}</span></div></div>`;
                     }); list.innerHTML = html;
                 }
-            }, (error) => console.error("Tasks Snap Error:", error));
+            });
 
             onSnapshot(collection(db, "notices"), (snapshot) => {
                 const list = document.getElementById('notif-list'), badge = document.getElementById('notif-badge');
@@ -968,19 +909,19 @@
                 snapshot.forEach((docSnap) => {
                     if(!clearedNotices.includes(docSnap.id)) {
                         newCount++; const data = docSnap.data();
-                        const safeTitle = (data.title || '').replace(/'/g, "\\'"); const safeMsg = (data.msg || '').replace(/'/g, "\\'");
+                        const safeTitle = String(data.title || '').replace(/'/g, "\\'"); const safeMsg = String(data.msg || '').replace(/'/g, "\\'");
                         html += `<div data-id="${docSnap.id}" onclick="openNotifDetail('${docSnap.id}', '${safeTitle}', '${safeMsg}', '${data.theme}')" class="notice-card p-4 bg-white dark:bg-darkCard rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm relative overflow-hidden cursor-pointer active:scale-95 transition-transform"><div class="absolute top-0 left-0 w-1 h-full bg-${data.theme}-500"></div><h3 class="font-bold text-sm mb-1">${data.title}</h3><p class="text-xs text-slate-500 dark:text-zinc-400 truncate">${data.msg}</p></div>`;
                     }
                 });
                 if(newCount === 0) { list.innerHTML = ''; list.style.display = 'none'; document.getElementById('notif-empty').style.display = 'flex'; badge.style.display='none'; } 
                 else { document.getElementById('notif-empty').style.display = 'none'; list.style.display = 'block'; badge.style.display='block'; list.innerHTML = html; }
-            }, (error) => console.error("Notices Snap Error:", error));
+            });
 
             onSnapshot(query(collection(db, "payment_methods"), where("isActive", "==", true)), (snapshot) => {
                 const select = document.getElementById('withdraw-method'); let html = '';
                 snapshot.forEach((docSnap) => { html += `<option value="${docSnap.data().name}">${docSnap.data().name}</option>`; });
                 select.innerHTML = html || '<option value="">No methods available</option>';
-            }, (error) => console.error("Payments Snap Error:", error));
+            });
 
             onSnapshot(query(collection(db, "withdrawals"), where("uid", "==", uid)), (snapshot) => {
                 const list = document.getElementById('withdraw-history-list');
@@ -992,7 +933,7 @@
                         html += `<div class="bg-white dark:bg-darkCard p-3 rounded-xl flex items-center justify-between border border-slate-200 dark:border-zinc-800 shadow-sm"><div class="flex items-center gap-3"><div class="h-10 w-10 rounded-full bg-cyan-100 dark:bg-cyan-500/10 flex items-center justify-center text-cyan-500"><i class="fa-solid fa-building-columns"></i></div><div><p class="font-bold text-sm capitalize">${data.method}</p></div></div><div class="text-right"><p class="font-bold text-sm">৳ ${data.amount}</p><span class="text-[9px] font-bold bg-${sColor}-100 text-${sColor}-600 dark:bg-${sColor}-500/20 px-2 py-0.5 rounded uppercase">${data.status}</span></div></div>`;
                     }); list.innerHTML = html;
                 }
-            }, (error) => console.error("Withdrawals Snap Error:", error));
+            });
 
             onSnapshot(query(collection(db, "users"), orderBy("totalEarned", "desc"), limit(10)), (snapshot) => {
                 const listA = document.getElementById('lb-approved-list'); let htmlA = ''; let rank = 1;
@@ -1000,7 +941,7 @@
                     const data = docSnap.data();
                     htmlA += `<div class="bg-yellow-50 dark:bg-yellow-500/5 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-yellow-200 dark:border-yellow-500/30"><h1 class="text-2xl font-black text-yellow-500 w-6 text-center">${rank++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-yellow-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400">${data.approvedTasks || 0} Tasks done</p></div><p class="text-emerald-600 dark:text-emerald-400 font-bold">৳ ${data.totalEarned || 0}</p></div>`;
                 }); listA.innerHTML = htmlA;
-            }, (error) => console.error("Leaderboard Snap Error:", error));
+            });
         }
 
         window.submitKYC = async () => {
