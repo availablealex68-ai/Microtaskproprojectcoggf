@@ -54,7 +54,6 @@
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
         input[type=file]::file-selector-button { background-color: #06b6d4; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background-color 0.2s ease; margin-right: 15px; }
         
-        /* FIX: Ensure only one main section is visible at a time */
         #auth-container { display: flex; }
         #main-app-container { display: none; }
     </style>
@@ -105,7 +104,7 @@
         <div class="relative w-full overflow-hidden min-h-[380px]">
             <!-- LOGIN FORM -->
             <div id="login-form" class="form-panel absolute w-full top-0 left-0 transform translate-x-0 opacity-100 z-10">
-                <div class="space-y-4 mb-6">
+                <form autocomplete="off" onsubmit="event.preventDefault(); loginUser();" class="space-y-4 mb-6">
                     <div class="relative group">
                         <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none"><i class="fa-solid fa-envelope text-slate-400 group-focus-within:text-cyan-500 transition-colors"></i></div>
                         <input type="email" id="login-email" autocomplete="off" placeholder="Email Address" class="w-full bg-white dark:bg-darkCard border border-slate-200 dark:border-zinc-700 text-sm rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 shadow-sm dark:text-white placeholder-slate-400">
@@ -115,7 +114,7 @@
                         <input type="password" id="login-password" autocomplete="new-password" placeholder="Password" class="w-full bg-white dark:bg-darkCard border border-slate-200 dark:border-zinc-700 text-sm rounded-xl pl-11 pr-10 py-3.5 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 shadow-sm dark:text-white placeholder-slate-400">
                         <i id="toggle-login-pwd" onclick="togglePasswordVisibility('login-password', 'toggle-login-pwd')" class="fa-solid fa-eye-slash absolute right-4 top-4 text-slate-400 cursor-pointer hover:text-cyan-500 transition-colors"></i>
                     </div>
-                </div>
+                </form>
                 <button type="button" id="btn-login-submit" onclick="loginUser()" class="w-full light-pass glow-pulse bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-sm mb-6 flex justify-center items-center gap-2">
                     <i class="fa-solid fa-right-to-bracket"></i> <span>Login</span>
                 </button>
@@ -129,7 +128,7 @@
 
             <!-- REGISTER FORM -->
             <div id="register-form" class="form-panel absolute w-full top-0 left-0 transform translate-x-full opacity-0 pointer-events-none z-0">
-                <div class="space-y-4 mb-6">
+                <form autocomplete="off" onsubmit="event.preventDefault(); registerUser();" class="space-y-4 mb-6">
                     <div class="relative group">
                         <div class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none"><i class="fa-solid fa-user text-slate-400 group-focus-within:text-cyan-500 transition-colors"></i></div>
                         <input type="text" id="reg-name" autocomplete="off" placeholder="Full Name" class="w-full bg-white dark:bg-darkCard border border-slate-200 dark:border-zinc-700 text-sm rounded-xl pl-11 pr-4 py-3.5 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 shadow-sm dark:text-white placeholder-slate-400">
@@ -143,7 +142,7 @@
                         <input type="password" id="reg-password" autocomplete="new-password" placeholder="Create Password (min 6 char)" class="w-full bg-white dark:bg-darkCard border border-slate-200 dark:border-zinc-700 text-sm rounded-xl pl-11 pr-10 py-3.5 focus:outline-none focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 shadow-sm dark:text-white placeholder-slate-400">
                         <i id="toggle-reg-pwd" onclick="togglePasswordVisibility('reg-password', 'toggle-reg-pwd')" class="fa-solid fa-eye-slash absolute right-4 top-4 text-slate-400 cursor-pointer hover:text-cyan-500 transition-colors"></i>
                     </div>
-                </div>
+                </form>
                 <button type="button" id="btn-reg-submit" onclick="registerUser()" class="w-full light-pass glow-pulse bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-sm flex justify-center items-center gap-2">
                     <i class="fa-solid fa-user-plus"></i> <span>Create Account</span>
                 </button>
@@ -548,7 +547,7 @@
     <!-- FIREBASE DB & AUTH API SCRIPTS -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
@@ -569,10 +568,17 @@
         
         let verifyInterval;
 
+        // টেলিগ্রাম/মেসেঞ্জারের মত ইন-অ্যাপ ব্রাউজারের গুগল লগইন এর জন্য
+        getRedirectResult(auth).then((result) => {
+            if (result) { isFreshLogin = true; }
+        }).catch((error) => { console.error("Redirect Error:", error); });
+
         onAuthStateChanged(auth, async (user) => {
             try {
-                if (user && user.emailVerified) {
-                    // Safe Document Creation (handles if rule blocks creation for some reason)
+                if (user) {
+                    if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
+                        auth.signOut(); showAuthScreen(); return;
+                    }
                     try {
                         const userRef = doc(db, "users", user.uid);
                         const userSnap = await getDoc(userRef);
@@ -580,13 +586,10 @@
                             const defaultName = user.displayName || user.email.split('@')[0];
                             await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
                         }
-                    } catch(err) {
-                        console.log("DB Initialization handled:", err);
-                    }
-                    showAppUI(user, true);
+                    } catch(err) { console.log("DB handled:", err); }
+                    showAppUI(user, !isFreshLogin);
                     loadDatabaseRealtime(user); 
-                } else if(user && !user.emailVerified) { 
-                    auth.signOut(); showAuthScreen(); 
+                    isFreshLogin = false;
                 } else { 
                     showAuthScreen(); 
                 }
@@ -601,6 +604,15 @@
             document.getElementById('auth-container').style.display = 'flex'; 
             document.getElementById('main-app-container').style.display = 'none'; 
             document.getElementById('auth-theme-btn').style.display = 'flex'; 
+            
+            // অটোমেটিক অ্যাডমিন মেইল বসে থাকলে সেটা রিমুভ করার জন্য
+            setTimeout(() => {
+                document.getElementById('login-email').value = '';
+                document.getElementById('login-password').value = '';
+                document.getElementById('reg-name').value = '';
+                document.getElementById('reg-email').value = '';
+                document.getElementById('reg-password').value = '';
+            }, 100);
         }
         
         function showAppUI(user, instant = false) {
@@ -683,15 +695,6 @@
 
                 document.getElementById('user-display-name-app').innerHTML = displayName + verifyTickHTML;
                 document.getElementById('profile-tab-name').innerHTML = displayName + verifyTickHTML;
-
-                if(document.getElementById('global-loader').style.display !== 'none') {
-                    if (isFreshLogin) {
-                        showAppUI(auth.currentUser, false);
-                        isFreshLogin = false;
-                    } else { 
-                        showAppUI(auth.currentUser, true); 
-                    }
-                }
             });
 
             onSnapshot(collection(db, "tasks"), (snapshot) => {
@@ -804,60 +807,85 @@
             } catch (error) { setButtonLoading('btn-save-settings', false, 'Save Changes', 'fa-solid fa-floppy-disk'); alert("Error: " + error.message); }
         }
 
-        window.registerUser = () => {
-            const name = document.getElementById('reg-name').value, email = document.getElementById('reg-email').value, password = document.getElementById('reg-password').value;
+        window.registerUser = async () => {
+            const name = document.getElementById('reg-name').value.trim(), email = document.getElementById('reg-email').value.trim(), password = document.getElementById('reg-password').value.trim();
             if(!name || !email || !password) return alert("Please fill all fields!"); if(password.length < 6) return alert("Password min 6 chars.");
-            setButtonLoading('btn-reg-submit', true); isFreshLogin = true;
-            createUserWithEmailAndPassword(auth, email, password)
-                .then((cred) => updateProfile(cred.user, { displayName: name }).then(() => cred))
-                .then((cred) => {
-                    sendEmailVerification(cred.user).then(() => {
-                        setButtonLoading('btn-reg-submit', false, 'Create Account', 'fa-solid fa-user-plus');
-                        const modal = document.getElementById('verify-modal'); modal.classList.remove('pointer-events-none', 'opacity-0'); document.getElementById('verify-modal-content').classList.remove('scale-95');
-                        verifyInterval = setInterval(async () => {
-                            await auth.currentUser.reload();
-                            if (auth.currentUser.emailVerified) { 
-                                clearInterval(verifyInterval); modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('verify-modal-content').classList.add('scale-95'); 
-                                
-                                try {
-                                    const userRef = doc(db, "users", auth.currentUser.uid);
-                                    await setDoc(userRef, { name: name, email: email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
-                                } catch(err) { console.log("DB Init Check:", err); }
-                                
-                                showAppUI(auth.currentUser, false); loadDatabaseRealtime(auth.currentUser);
-                            }
-                        }, 3000);
-                    });
-                }).catch((e) => { setButtonLoading('btn-reg-submit', false, 'Create Account', 'fa-solid fa-user-plus'); alert("Error: " + e.message); });
+            
+            setButtonLoading('btn-reg-submit', true, 'Processing...', 'fa-solid fa-spinner'); 
+            isFreshLogin = true;
+            
+            try {
+                const cred = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(cred.user, { displayName: name });
+                await sendEmailVerification(cred.user);
+                
+                const modal = document.getElementById('verify-modal'); 
+                modal.classList.remove('pointer-events-none', 'opacity-0'); document.getElementById('verify-modal-content').classList.remove('scale-95');
+                
+                verifyInterval = setInterval(async () => {
+                    await auth.currentUser.reload();
+                    if (auth.currentUser.emailVerified) { 
+                        clearInterval(verifyInterval); 
+                        modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('verify-modal-content').classList.add('scale-95'); 
+                        
+                        try {
+                            const userRef = doc(db, "users", auth.currentUser.uid);
+                            await setDoc(userRef, { name: name, email: email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                        } catch(err) { console.log("DB Init Check:", err); }
+                        
+                        showAppUI(auth.currentUser, false); loadDatabaseRealtime(auth.currentUser);
+                    }
+                }, 3000);
+            } catch (e) { 
+                alert("Error: " + e.message); 
+            } finally {
+                setButtonLoading('btn-reg-submit', false, 'Create Account', 'fa-solid fa-user-plus');
+            }
         };
 
         window.cancelVerification = () => { clearInterval(verifyInterval); auth.signOut(); const modal = document.getElementById('verify-modal'); modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('verify-modal-content').classList.add('scale-95'); toggleAuth('login'); }
 
-        window.loginUser = () => {
-            const email = document.getElementById('login-email').value, password = document.getElementById('login-password').value;
+        window.loginUser = async () => {
+            const email = document.getElementById('login-email').value.trim(), password = document.getElementById('login-password').value.trim();
             if(!email || !password) return alert("Enter email and password!");
-            setButtonLoading('btn-login-submit', true); isFreshLogin = true;
-            signInWithEmailAndPassword(auth, email, password).then((cred) => {
-                if(!cred.user.emailVerified) { setButtonLoading('btn-login-submit', false, 'Login', 'fa-solid fa-right-to-bracket'); alert("Please verify email first!"); auth.signOut(); }
-            }).catch((e) => { setButtonLoading('btn-login-submit', false, 'Login', 'fa-solid fa-right-to-bracket'); alert("Login Failed: Incorrect email or password."); });
+            
+            setButtonLoading('btn-login-submit', true, 'Processing...', 'fa-solid fa-spinner'); 
+            isFreshLogin = true;
+            
+            try {
+                const cred = await signInWithEmailAndPassword(auth, email, password);
+                if(!cred.user.emailVerified) { alert("Please verify email first!"); await auth.signOut(); }
+            } catch (e) { 
+                alert("Login Failed: Incorrect email or password."); 
+            } finally {
+                setButtonLoading('btn-login-submit', false, 'Login', 'fa-solid fa-right-to-bracket');
+            }
         };
 
         window.googleLogin = async () => {
-            setButtonLoading('btn-google-login', true, 'Connecting...', 'fa-brands fa-google text-red-500'); 
+            setButtonLoading('btn-google-login', true, 'Processing...', 'fa-brands fa-google text-red-500'); 
             isFreshLogin = true;
+            
             try {
-                const result = await signInWithPopup(auth, provider);
-                // onAuthStateChanged handles UI rendering
+                const ua = navigator.userAgent || navigator.vendor || window.opera;
+                const isSocialBrowser = (ua.indexOf('Instagram') > -1) || (ua.indexOf('FBAN') > -1) || (ua.indexOf('FBAV') > -1) || (ua.indexOf('Telegram') > -1);
+                
+                if (isSocialBrowser) {
+                    await signInWithRedirect(auth, provider);
+                } else {
+                    await signInWithPopup(auth, provider);
+                }
             } catch (error) {
-                setButtonLoading('btn-google-login', false, 'Google Account', 'fa-brands fa-google text-red-500'); 
-                alert("Google Login error: Make sure this domain is added in Firebase Auth settings.");
+                alert("Google Login error: Please try opening the app in Chrome browser.");
+            } finally {
+                setButtonLoading('btn-google-login', false, 'Google Account', 'fa-brands fa-google text-red-500');
             }
         };
         
         window.submitBulkTask = () => {
             const fileInput = document.getElementById('bulk-file');
             if(fileInput.files.length === 0) return alert("Select a file first!");
-            setButtonLoading('btn-bulk-submit', true);
+            setButtonLoading('btn-bulk-submit', true, 'Uploading...', 'fa-solid fa-spinner');
             setTimeout(() => { setButtonLoading('btn-bulk-submit', false, 'File Uploaded', 'fa-solid fa-check-double'); document.getElementById('btn-bulk-submit').disabled = true; alert("Bulk accounts successfully uploaded for review!"); setTimeout(() => closeTaskDetails(), 1500); }, 1500);
         }
     </script>
