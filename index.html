@@ -234,20 +234,22 @@
                         <button onclick="toggleLeaderboard('pending')" id="btn-lb-pending" class="flex-1 relative z-10 py-2 text-sm font-bold text-slate-500 dark:text-zinc-400 transition-colors">Pending</button>
                     </div>
                 </div>
-                <div class="relative w-full overflow-hidden h-[55vh]" id="lb-slider-container">
-                    <div id="lb-approved" class="absolute w-full h-full top-0 left-0 transition-transform duration-300 transform translate-x-0 opacity-100 z-10 flex flex-col">
+                
+                <!-- Fixed Leaderboard Container (No inner absolute heights) -->
+                <div class="relative w-full overflow-hidden" id="lb-slider-container">
+                    <div id="lb-approved" class="w-full relative transition-transform duration-300 transform translate-x-0 opacity-100 z-10 flex flex-col">
                         <div class="light-pass shrink-0 bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-2xl mb-3 flex items-center gap-4 border-2 border-cyan-400 dark:border-cyan-500 shadow-md">
                             <h1 class="text-2xl font-black text-cyan-600 dark:text-cyan-400 w-6 text-center">★</h1>
                             <img id="lb-current-user-pic" src="" class="h-12 w-12 rounded-full border-2 border-cyan-400 dark:border-cyan-500 object-cover bg-slate-200">
                             <div class="flex-1"><p class="font-bold text-sm text-cyan-700 dark:text-cyan-300">You <span id="lb-current-name">(User)</span> <span class="verify-badge hidden"><i class="fa-solid fa-circle-check text-cyan-500 text-sm ml-1"></i></span></p><p class="text-[11px] text-cyan-600/70 dark:text-cyan-400/70"><span id="lb-my-approved">0</span> Tasks done</p></div>
                             <p class="text-emerald-600 dark:text-emerald-400 font-bold">৳ <span id="lb-my-earned">0</span></p>
                         </div>
-                        <div id="lb-approved-list" class="space-y-3 overflow-y-auto flex-1 pb-24 scrollbar-hide">
+                        <div id="lb-approved-list" class="space-y-3 pb-6">
                             <p class="text-center text-sm text-slate-500 py-4">Loading Leaderboard...</p>
                         </div>
                     </div>
-                    <div id="lb-pending" class="absolute w-full h-full top-0 left-0 transition-transform duration-300 transform translate-x-full opacity-0 pointer-events-none z-0 flex flex-col">
-                        <div id="lb-pending-list" class="space-y-3 overflow-y-auto flex-1 pb-24 scrollbar-hide">
+                    <div id="lb-pending" class="w-full absolute top-0 left-0 transition-transform duration-300 transform translate-x-full opacity-0 pointer-events-none z-0 flex flex-col">
+                        <div id="lb-pending-list" class="space-y-3 pb-6">
                             <p class="text-center text-sm text-slate-500 py-4">Loading Leaderboard...</p>
                         </div>
                     </div>
@@ -413,7 +415,7 @@
                             <div id="div-2fa" class="mb-5 hidden">
                                 <label class="text-xs font-bold text-rose-500 dark:text-rose-400 mb-1 block">2FA Secret Key (Required)*</label>
                                 <input type="text" id="twoFaInput" oninput="generateOTP(this.value)" placeholder="Paste 2FA Secret here..." class="w-full bg-slate-100 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 transition-colors">
-                                <div id="otpDisplay" class="hidden mt-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-xl flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="copyOTP(this)"><div><p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">Generated OTP</p><p id="otpCode" class="text-xl font-black text-emerald-700 dark:text-emerald-300 tracking-widest mt-1">------</p></div><i class="fa-regular fa-copy text-emerald-500 text-lg"></i></div>
+                                <div id="otpDisplay" class="hidden mt-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-xl flex justify-between items-center cursor-pointer active:scale-scale-95 transition-transform" onclick="copyOTP(this)"><div><p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">Generated OTP</p><p id="otpCode" class="text-xl font-black text-emerald-700 dark:text-emerald-300 tracking-widest mt-1">------</p></div><i class="fa-regular fa-copy text-emerald-500 text-lg"></i></div>
                             </div>
                             <div id="div-cookie" class="mb-5 hidden">
                                 <label class="text-xs font-bold text-rose-500 dark:text-rose-400 mb-1 block">Submit Cookies (Min 100 Char)*</label>
@@ -459,9 +461,17 @@
     <!-- UI Scripts -->
     <script>
         let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let activeTaskRequires2FA = false; let activeTaskRequiresCookies = false; let submittedTaskIds = []; let isFreshLogin = false;
-        
-        let activeTaskPlatform = ''; let activeTaskPassword = ''; 
-        let currentOverlay = null;
+        let activeTaskPlatform = ''; let activeTaskPassword = ''; let currentOverlay = null;
+
+        window.getPlatformStyles = (platform) => {
+            let p = (platform || 'facebook').toLowerCase();
+            if(p === 'facebook') return { bg: 'bg-[#1877F2]/10', text: 'text-[#1877F2]', icon: 'fa-facebook' };
+            if(p === 'youtube') return { bg: 'bg-[#FF0000]/10', text: 'text-[#FF0000]', icon: 'fa-youtube' };
+            if(p === 'instagram') return { bg: 'bg-[#E1306C]/10', text: 'text-[#E1306C]', icon: 'fa-instagram' };
+            if(p === 'tiktok') return { bg: 'bg-black/5 dark:bg-white/10', text: 'text-black dark:text-white', icon: 'fa-tiktok' };
+            if(p === 'twitter' || p === 'x') return { bg: 'bg-[#1DA1F2]/10', text: 'text-[#1DA1F2]', icon: 'fa-twitter' };
+            return { bg: 'bg-cyan-500/10', text: 'text-cyan-500', icon: 'fa-briefcase' };
+        }
 
         function togglePasswordVisibility(inputId, iconId) {
             const input = document.getElementById(inputId), icon = document.getElementById(iconId);
@@ -533,8 +543,27 @@
 
         function toggleLeaderboard(type) { 
             const lbApproved = document.getElementById('lb-approved'), lbPending = document.getElementById('lb-pending'), indicator = document.getElementById('lb-indicator'), btnApproved = document.getElementById('btn-lb-approved'), btnPending = document.getElementById('btn-lb-pending'); 
-            if(type === 'pending') { indicator.style.transform = 'translateX(100%)'; btnApproved.classList.replace('text-slate-900', 'text-slate-500'); btnApproved.classList.replace('dark:text-white', 'dark:text-zinc-400'); btnPending.classList.replace('text-slate-500', 'text-slate-900'); btnPending.classList.replace('dark:text-zinc-400', 'dark:text-white'); lbApproved.style.transform = 'translateX(-100%)'; lbApproved.style.opacity = '0'; lbApproved.classList.add('pointer-events-none'); lbPending.style.transform = 'translateX(0)'; lbPending.style.opacity = '1'; lbPending.classList.remove('pointer-events-none'); } 
-            else { indicator.style.transform = 'translateX(0)'; btnPending.classList.replace('text-slate-900', 'text-slate-500'); btnPending.classList.replace('dark:text-white', 'dark:text-zinc-400'); btnApproved.classList.replace('text-slate-500', 'text-slate-900'); btnApproved.classList.replace('dark:text-zinc-400', 'dark:text-white'); lbPending.style.transform = 'translateX(100%)'; lbPending.style.opacity = '0'; lbPending.classList.add('pointer-events-none'); lbApproved.style.transform = 'translateX(0)'; lbApproved.style.opacity = '1'; lbApproved.classList.remove('pointer-events-none'); } 
+            if(type === 'pending') { 
+                indicator.style.transform = 'translateX(100%)'; 
+                btnApproved.classList.replace('text-slate-900', 'text-slate-500'); btnApproved.classList.replace('dark:text-white', 'dark:text-zinc-400'); 
+                btnPending.classList.replace('text-slate-500', 'text-slate-900'); btnPending.classList.replace('dark:text-zinc-400', 'dark:text-white'); 
+                
+                lbApproved.classList.remove('relative'); lbApproved.classList.add('absolute', 'top-0', 'left-0');
+                lbApproved.style.transform = 'translateX(-100%)'; lbApproved.style.opacity = '0'; lbApproved.classList.add('pointer-events-none'); 
+                
+                lbPending.classList.remove('absolute', 'top-0', 'left-0'); lbPending.classList.add('relative');
+                lbPending.style.transform = 'translateX(0)'; lbPending.style.opacity = '1'; lbPending.classList.remove('pointer-events-none'); 
+            } else { 
+                indicator.style.transform = 'translateX(0)'; 
+                btnPending.classList.replace('text-slate-900', 'text-slate-500'); btnPending.classList.replace('dark:text-white', 'dark:text-zinc-400'); 
+                btnApproved.classList.replace('text-slate-500', 'text-slate-900'); btnApproved.classList.replace('dark:text-zinc-400', 'dark:text-white'); 
+                
+                lbPending.classList.remove('relative'); lbPending.classList.add('absolute', 'top-0', 'left-0');
+                lbPending.style.transform = 'translateX(100%)'; lbPending.style.opacity = '0'; lbPending.classList.add('pointer-events-none'); 
+                
+                lbApproved.classList.remove('absolute', 'top-0', 'left-0'); lbApproved.classList.add('relative');
+                lbApproved.style.transform = 'translateX(0)'; lbApproved.style.opacity = '1'; lbApproved.classList.remove('pointer-events-none'); 
+            } 
         }
         
         window.clearNotifications = () => { 
@@ -692,7 +721,9 @@
         onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
-                    if (!user.emailVerified && user.providerData.some(p => p.providerId === 'password')) {
+                    const hasGoogle = user.providerData.some(p => p.providerId === 'google.com');
+                    
+                    if (!user.emailVerified && !hasGoogle) {
                         if (isRegistering) return; 
                         startVerificationCheck(user); 
                         return;
@@ -898,7 +929,23 @@
                         const safePass = String(data.password || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
                         const safePlatform = String(data.platform || 'facebook').replace(/'/g, "\\'");
                         
-                        html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', ${!!data.require2FA},${!!data.requireCookies}, '${safePlatform}', '${safePass}')`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}"><div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div><div class="flex justify-between items-center"><div class="flex gap-3 items-center"><div class="h-10 w-10 rounded-lg bg-cyan-500/10 text-cyan-500 flex items-center justify-center text-2xl drop-shadow-md"><i class="fa-brands fa-${data.platform || 'facebook'}"></i></div><div><p class="font-bold text-sm">${data.title}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">${data.require2FA ? '2FA • ' : ''}${data.requireCookies ? 'Cookies' : 'Simple Task'}</p></div></div><span class="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">${doneText}</span></div></div>`;
+                        const pStyles = window.getPlatformStyles(safePlatform);
+
+                        html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', ${!!data.require2FA},${!!data.requireCookies}, '${safePlatform}', '${safePass}')`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}">
+                            <div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div>
+                            <div class="flex justify-between items-center">
+                                <div class="flex gap-3 items-center">
+                                    <div class="h-10 w-10 rounded-lg ${pStyles.bg} ${pStyles.text} flex items-center justify-center text-2xl drop-shadow-md">
+                                        <i class="fa-brands ${pStyles.icon}"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-sm">${data.title}</p>
+                                        <p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">${data.require2FA ? '2FA • ' : ''}${data.requireCookies ? 'Cookies' : 'Simple Task'}</p>
+                                    </div>
+                                </div>
+                                <span class="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">${doneText}</span>
+                            </div>
+                        </div>`;
                     }); list.innerHTML = html;
                 }
             });
@@ -1014,6 +1061,24 @@
                 setButtonLoading('btn-reg-submit', false, 'Create Account', 'fa-solid fa-user-plus');
                 isRegistering = false; 
             }
+        };
+
+        window.cancelVerification = async () => { 
+            clearInterval(verifyInterval); clearInterval(timerInterval);
+            try { await signOut(auth); } catch(e){}
+            const modal = document.getElementById('verify-modal'); 
+            modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('verify-modal-content').classList.add('scale-95'); 
+            showAuthScreen(); toggleAuth('login'); 
+        }
+
+        window.logoutUser = async () => { 
+            document.getElementById('global-loader').style.display = 'flex';
+            document.getElementById('loader-text').innerText = "Signing out securely...";
+            try {
+                await signOut(auth);
+                localStorage.clear();
+                window.location.replace(window.location.href.split('#')[0]);
+            } catch(e) { window.location.reload(); }
         };
 
         window.loginUser = async () => {
