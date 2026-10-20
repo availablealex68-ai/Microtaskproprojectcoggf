@@ -10,7 +10,7 @@
         tailwind.config = { darkMode: 'class', theme: { extend: { colors: { darkBg: '#09090b', darkCard: '#18181b', } } } }
     </script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
         body { font-family: 'Inter', sans-serif; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
@@ -32,7 +32,7 @@
         .glow-pulse { animation: pulseGlow 3s infinite alternate; }
         @keyframes pulseGlow { 0% { box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.15); } 100% { box-shadow: 0 15px 35px -5px rgba(16, 185, 129, 0.45); } }
         
-        .fade-in { animation: fadeIn 0.25s ease-out forwards; }
+        .fade-in { animation: fadeIn 0.2s ease-out forwards; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
         .zoom-in { animation: zoomIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
@@ -43,7 +43,7 @@
         .task-fab:active { transform: scale(0.95); }
 
         .app-page { display: none; }
-        .app-page.active { display: block; animation: fadeIn 0.25s ease-out forwards; }
+        .app-page.active { display: block; animation: fadeIn 0.2s ease-out forwards; }
 
         @keyframes floatUpFade { 0% { opacity: 1; transform: translate(-50%, 0) scale(1); } 100% { opacity: 0; transform: translate(-50%, -30px) scale(1.1); } }
         .copy-floater { position: absolute; top: 0; left: 50%; transform: translateX(-50%); color: #10b981; font-weight: bold; font-size: 14px; animation: floatUpFade 0.6s forwards; pointer-events: none; text-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 100; }
@@ -62,9 +62,19 @@
 
         .glass-modal { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
         .dark .glass-modal { background: rgba(24, 24, 27, 0.95); border: 1px solid rgba(255,255,255,0.05); }
+
+        /* Premium Top Toast Animation */
+        #top-toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); z-index: 9999; transition: top 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2); }
+        #top-toast.show { top: 24px; }
     </style>
 </head>
 <body class="flex justify-center h-screen w-full overflow-hidden bg-slate-50 dark:bg-darkBg text-slate-900 dark:text-zinc-50 relative">
+
+    <!-- TOP TOAST NOTIFICATION (Premium Success Message) -->
+    <div id="top-toast" class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-5 py-3 rounded-full flex items-center gap-3 border border-emerald-400">
+        <div class="h-6 w-6 bg-white/20 rounded-full flex items-center justify-center"><i class="fa-solid fa-check text-xs"></i></div>
+        <span id="toast-msg" class="font-bold text-sm tracking-wide">Task Submitted!</span>
+    </div>
 
     <div id="global-loader" class="fixed inset-0 z-[999] bg-slate-50 dark:bg-darkBg flex items-center justify-center transition-colors">
         <div class="flex flex-col items-center">
@@ -206,7 +216,7 @@
             </div>
         </header>
 
-        <main class="flex-1 overflow-y-auto px-5 pt-5 pb-28 relative">
+        <main class="flex-1 overflow-y-auto px-5 pt-5 pb-28 relative scrollbar-hide">
             
             <!-- HOME PAGE -->
             <section id="page-home" class="app-page active">
@@ -232,6 +242,7 @@
                     </div>
                 </div>
 
+                <!-- Recent Task History -->
                 <h3 class="font-bold text-lg mb-3 mt-8 flex items-center"><i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i> Recent Task History</h3>
                 <div id="home-history-list" class="space-y-3 mb-6">
                     <p class="text-xs text-slate-500 dark:text-zinc-400 text-center py-6 border border-dashed border-slate-300 dark:border-zinc-700 rounded-2xl">Loading history...</p>
@@ -404,8 +415,19 @@
             <div id="task-detail-overlay" class="absolute inset-0 bg-slate-50 dark:bg-darkBg z-[60] hidden slide-in-right flex-col pb-6">
                 <div class="p-5 flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 shadow-sm bg-white/50 dark:bg-darkBg/50 backdrop-blur-md">
                     <div class="flex items-center gap-4"><button onclick="closeTaskDetails()" class="h-8 w-8 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center active:scale-90 transition-transform"><i class="fa-solid fa-arrow-left"></i></button><h2 id="task-detail-title" class="text-lg font-bold truncate max-w-[200px]">Task</h2></div>
+                    <button onclick="toggleBulkUpload()" class="text-xs font-bold text-cyan-600 bg-cyan-50 dark:bg-cyan-900/30 px-3 py-1.5 rounded-lg border border-cyan-200 dark:border-cyan-800 active:scale-95 transition-transform shadow-sm"><i class="fa-solid fa-layer-group mr-1"></i> Bulk</button>
                 </div>
                 <div class="flex-1 overflow-y-auto px-5 pt-4">
+                    <div id="task-bulk-area" class="hidden">
+                        <div class="bg-slate-100 dark:bg-zinc-800/50 p-5 rounded-2xl border border-slate-200 dark:border-zinc-700 text-center mb-5 border-dashed">
+                            <i class="fa-solid fa-file-csv text-4xl text-cyan-500 mb-3"></i>
+                            <h3 class="font-bold mb-1">Bulk Submit Tasks</h3>
+                            <p class="text-[10px] text-slate-500 dark:text-zinc-400 mb-4 bg-white dark:bg-darkCard p-2 rounded-lg" id="bulk-format-hint">Required CSV Headers: Loading...</p>
+                            <input type="file" id="bulk-file" accept=".csv" class="w-full text-sm text-slate-500 dark:text-zinc-400 bg-white dark:bg-darkCard border border-slate-200 dark:border-zinc-700 p-2 rounded-xl mb-2 focus:outline-none">
+                        </div>
+                        <button id="btn-bulk-submit" onclick="submitBulkTask()" class="w-full light-pass glow-pulse bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-transform text-sm flex justify-center items-center gap-2"><i class="fa-solid fa-cloud-arrow-up"></i> <span>Upload CSV File</span></button>
+                    </div>
+                    
                     <div id="task-single-area">
                         <div id="task-instructions">
                             <div class="bg-blue-50 dark:bg-blue-500/10 p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 mb-5">
@@ -427,7 +449,6 @@
                             <!-- Dynamic Inputs Area (UID, 2FA, Cookies etc) -->
                             <div id="dynamic-inputs-area" class="space-y-4 mb-5"></div>
                             
-                            <!-- Button ID preserved correctly to prevent null errors -->
                             <button id="btn-task-submit" onclick="submitSingleTask()" class="w-full light-pass glow-pulse bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all duration-200 text-sm flex justify-center items-center gap-2"><i class="fa-solid fa-check-circle" id="btn-submit-icon"></i> <span id="btn-submit-text">Submit Task</span></button>
                         </div>
                     </div>
@@ -470,6 +491,14 @@
         let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let isFreshLogin = false;
         let activeTaskPlatform = ''; let activeTaskPassword = ''; let activeTaskFormat = []; let currentOverlay = null;
 
+        // TOP TOAST (Fast Success)
+        window.showToast = (msg) => {
+            const toast = document.getElementById('top-toast');
+            document.getElementById('toast-msg').innerText = msg;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 2000);
+        }
+
         // PREMIUM SMART ALERTS
         window.smartAlert = (msg, type = 'info') => {
             return new Promise((resolve) => {
@@ -480,11 +509,7 @@
                 const message = document.getElementById('smart-alert-message');
                 const btnConfirm = document.getElementById('smart-btn-confirm');
 
-                if (type === 'success') {
-                    icon.className = 'mx-auto mb-4 h-16 w-16 rounded-full flex items-center justify-center text-3xl bg-emerald-100 text-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30';
-                    icon.innerHTML = '<i class="fa-solid fa-check"></i>';
-                    btnConfirm.className = 'w-full bg-gradient-to-r from-emerald-500 to-emerald-400 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/30 active:scale-95 transition-all text-sm';
-                } else if (type === 'error') {
+                if (type === 'error') {
                     icon.className = 'mx-auto mb-4 h-16 w-16 rounded-full flex items-center justify-center text-3xl bg-rose-100 text-rose-500 dark:bg-rose-500/20 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30';
                     icon.innerHTML = '<i class="fa-solid fa-xmark"></i>';
                     btnConfirm.className = 'w-full bg-gradient-to-r from-rose-500 to-rose-400 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-rose-500/30 active:scale-95 transition-all text-sm';
@@ -568,13 +593,12 @@
             if(id === 'task-detail-overlay') {
                 document.getElementById('task-instructions').style.display = 'block'; 
                 document.getElementById('task-action-area').style.display = 'none';
+                document.getElementById('task-bulk-area').style.display = 'none';
                 
                 const submitBtn = document.getElementById('btn-task-submit');
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('bg-emerald-500', 'scale-95');
                 submitBtn.classList.add('bg-gradient-to-r', 'from-emerald-500', 'to-cyan-500', 'glow-pulse');
-                
-                // Re-inject intact HTML structure for next open
                 submitBtn.innerHTML = `<i class="fa-solid fa-check-circle" id="btn-submit-icon"></i> <span id="btn-submit-text">Submit Task</span>`;
             }
             currentOverlay = null;
@@ -664,6 +688,7 @@
         window.startTaskAction = () => { 
             document.getElementById('task-instructions').style.display = 'none'; 
             document.getElementById('task-action-area').style.display = 'block'; 
+            document.getElementById('task-bulk-area').style.display = 'none';
             
             let taskData = localStorage.getItem('task_data_' + activeTaskId);
             
@@ -739,11 +764,8 @@
         }
 
         window.cancelCurrentTask = async () => {
-            const confirmed = await window.smartAlert("Are you sure you want to cancel? New data will be generated next time you enter this task.", "confirm");
-            if(confirmed) {
-                localStorage.removeItem('task_data_' + activeTaskId);
-                closeTaskDetails();
-            }
+            localStorage.removeItem('task_data_' + activeTaskId);
+            closeTaskDetails();
         }
         
         window.copyData = (text, element) => { 
@@ -777,11 +799,22 @@
             submitBtn.disabled = false;
             submitBtn.classList.remove('bg-emerald-500', 'scale-95');
             submitBtn.classList.add('bg-gradient-to-r', 'from-emerald-500', 'to-cyan-500', 'glow-pulse');
-            
-            // Critical fix to preserve ID mapping for super fast submission
             submitBtn.innerHTML = `<i class="fa-solid fa-check-circle" id="btn-submit-icon"></i> <span id="btn-submit-text">Submit Task</span>`;
             
             openOverlay('task-detail-overlay'); 
+        }
+
+        window.toggleBulkUpload = () => { 
+            const singleArea = document.getElementById('task-single-area');
+            const bulkArea = document.getElementById('task-bulk-area'); 
+            if(bulkArea.style.display === 'block') { 
+                bulkArea.style.display = 'none'; 
+                singleArea.style.display = 'block'; 
+            } else { 
+                singleArea.style.display = 'none'; 
+                bulkArea.style.display = 'block'; 
+                document.getElementById('bulk-format-hint').innerText = `Required CSV Headers: ${activeTaskFormat.join(', ')}`;
+            } 
         }
 
     </script>
@@ -790,7 +823,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, updateProfile, updatePassword, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, increment } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, onSnapshot, query, where, orderBy, limit, serverTimestamp, increment, writeBatch } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDB7fXgHjnMA2wQwmvU4eOycHjiRIoVn5U",
@@ -812,6 +845,7 @@
         let verifyTimeLeft = 300;
         let isRegistering = false;
 
+        // Force browser persistence to fix auto-logout issues
         setPersistence(auth, browserLocalPersistence).catch((error) => { console.error("Persistence Error:", error); });
 
         getRedirectResult(auth).then((result) => {
@@ -821,14 +855,15 @@
         onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
-                    let isPasswordUser = false;
+                    let isGoogleUser = false;
                     if(user.providerData) {
                         user.providerData.forEach(p => {
-                            if(p.providerId === 'password') isPasswordUser = true;
+                            if(p.providerId.includes('google')) isGoogleUser = true;
                         });
                     }
                     
-                    if (!user.emailVerified && isPasswordUser) {
+                    // IF EMAIL IS NOT VERIFIED AND NOT LOGGED IN VIA GOOGLE
+                    if (!user.emailVerified && !isGoogleUser) {
                         if (isRegistering) return; 
                         startVerificationCheck(user); 
                         return;
@@ -1000,7 +1035,6 @@
                 document.getElementById('profile-display-email').innerText = data.email || user.email;
                 document.getElementById('user-profile-pic').src = photoUrl;
                 document.getElementById('profile-tab-pic').src = photoUrl;
-                document.getElementById('lb-current-user-pic').src = photoUrl;
                 document.getElementById('lb-current-name').innerText = `(${displayName})`;
                 
                 document.getElementById('main-balance').innerText = currentUserBalance.toLocaleString();
@@ -1094,27 +1128,38 @@
                 }
             });
 
-            // HOME PAGE RECENT TASK HISTORY
-            onSnapshot(query(collection(db, "task_submissions"), where("uid", "==", uid), orderBy("createdAt", "desc"), limit(10)), (snapshot) => {
+            // HOME PAGE RECENT TASK HISTORY (Fix Index Issue by sorting on client side)
+            onSnapshot(query(collection(db, "task_submissions"), where("uid", "==", uid)), (snapshot) => {
                 const list = document.getElementById('home-history-list');
-                if(snapshot.empty) {
+                let historyArray = [];
+                snapshot.forEach(docSnap => { 
+                    let d = docSnap.data();
+                    d.id = docSnap.id;
+                    historyArray.push(d);
+                });
+                
+                // Sort array client-side by timestamp descending
+                historyArray.sort((a, b) => {
+                    let timeA = a.createdAt ? a.createdAt.seconds : 0;
+                    let timeB = b.createdAt ? b.createdAt.seconds : 0;
+                    return timeB - timeA;
+                });
+                
+                historyArray = historyArray.slice(0, 10); // Take only last 10
+
+                if(historyArray.length === 0) {
                     list.innerHTML = `<p class="text-xs text-slate-500 dark:text-zinc-400 text-center py-6 border border-dashed border-slate-300 dark:border-zinc-700 rounded-2xl">No recent tasks found.</p>`;
                 } else {
                     let html = '';
-                    snapshot.forEach(docSnap => {
-                        const data = docSnap.data();
-                        const shortId = docSnap.id.substring(0, 7).toUpperCase();
+                    historyArray.forEach(data => {
+                        const shortId = data.id.substring(0, 7).toUpperCase();
                         
                         let tName = 'Task Submission';
                         let rawTaskData = localStorage.getItem('raw_tasks_cache');
                         if(rawTaskData) {
                             let cache = JSON.parse(rawTaskData);
                             let tData = cache.find(x => x.id === data.taskId);
-                            if(tData) {
-                                // Since we don't have allTasksData in user panel live sync array globally saved with title,
-                                // we will just show submission ID clearly.
-                                tName = 'Live Task Submission';
-                            }
+                            if(tData) tName = 'Live Task Submission';
                         }
 
                         html += `<div class="bg-white dark:bg-darkCard p-4 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm flex justify-between items-center mb-3">
@@ -1167,7 +1212,7 @@
                 }
             });
 
-            // ALL USERS LEADERBOARD WITH FALLBACK AND RULES ERROR HANDLING
+            // LEADERBOARD (Approved & Pending Local Build)
             onSnapshot(collection(db, "users"), (snapshot) => {
                 let usersList = [];
                 snapshot.forEach(doc => { usersList.push(doc.data()); });
@@ -1184,8 +1229,7 @@
                     htmlP += `<div class="bg-cyan-50 dark:bg-cyan-900/10 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-cyan-200 dark:border-cyan-500/30"><h1 class="text-2xl font-black text-cyan-500 w-6 text-center">${rankP++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-cyan-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p></div><p class="text-cyan-600 dark:text-cyan-400 font-bold">${data.pendingTasks} Pending</p></div>`;
                 }); listP.innerHTML = htmlP || `<p class="text-center text-sm text-slate-500 py-4">No pending tasks found.</p>`;
             }, (error) => {
-                // FALLBACK FOR FIREBASE RULE ERROR
-                document.getElementById('lb-approved-list').innerHTML = `<div class="bg-rose-50 dark:bg-rose-500/10 p-4 rounded-xl border border-rose-200 dark:border-rose-500/30 text-center"><i class="fa-solid fa-triangle-exclamation text-rose-500 text-2xl mb-2"></i><p class="text-xs text-rose-600 dark:text-rose-400 font-bold">Database Rules Error!</p><p class="text-[10px] text-rose-500 mt-1">Please ask Admin to update Firebase Rules to allow read access.</p></div>`;
+                document.getElementById('lb-approved-list').innerHTML = `<p class="text-xs text-rose-500 text-center py-4">Database Rules Error.</p>`;
                 document.getElementById('lb-pending-list').innerHTML = `<p class="text-xs text-rose-500 text-center py-4">Database Rules Error.</p>`;
             });
         }
@@ -1230,7 +1274,6 @@
             const submitBtn = document.getElementById('btn-task-submit'); 
             const btnIcon = document.getElementById('btn-submit-icon');
             
-            // Fast loading UI
             submitBtn.disabled = true;
             btnIcon.className = "fa-solid fa-spinner animate-spin";
             document.getElementById('btn-submit-text').innerText = "Processing...";
@@ -1247,7 +1290,7 @@
                 
                 await updateDoc(doc(db, "users", uid), { pendingTasks: increment(1) });
 
-                // Fast UI Response
+                // Fast UI Response without alert
                 submitBtn.classList.replace('from-emerald-500', 'bg-emerald-500'); 
                 submitBtn.classList.replace('to-cyan-500', 'bg-emerald-500'); 
                 submitBtn.classList.replace('bg-gradient-to-r', 'bg-none');
@@ -1258,6 +1301,7 @@
                 
                 localStorage.removeItem('task_data_' + activeTaskId);
                 
+                window.showToast("Task Submitted Successfully!");
                 setTimeout(() => { closeTaskDetails(); }, 500); 
 
             } catch (e) { 
@@ -1266,6 +1310,72 @@
                 submitBtn.disabled = false;
                 await window.smartAlert("Error submitting task: " + e.message, "error"); 
             }
+        }
+
+        window.submitBulkTask = async () => {
+            const fileInput = document.getElementById('bulk-file');
+            if(!fileInput.files.length) return await window.smartAlert("Please select a CSV file first.", "warning");
+            
+            const file = fileInput.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = async (e) => {
+                const text = e.target.result;
+                const rows = text.split('\n').map(r => r.trim()).filter(r => r);
+                if(rows.length < 2) return await window.smartAlert("File is empty or missing data rows.", "error");
+                
+                const headers = rows[0].split(',').map(h => h.trim().toLowerCase());
+                const required = activeTaskFormat.map(f => f.toLowerCase());
+                
+                let isValid = required.every(r => headers.includes(r));
+                if(!isValid) return await window.smartAlert("CSV Headers do not match the required format: \n\n" + activeTaskFormat.join(', '), "error");
+                
+                setButtonLoading('btn-bulk-submit', true, 'Uploading...', 'fa-solid fa-spinner');
+                
+                try {
+                    const batch = writeBatch(db);
+                    let count = 0;
+                    
+                    for(let i=1; i<rows.length; i++) {
+                        const cols = rows[i].split(',').map(c => c.trim());
+                        if(cols.length !== headers.length) continue; 
+                        
+                        let submissionData = {};
+                        required.forEach((req, idx) => {
+                            let colIdx = headers.indexOf(req);
+                            submissionData[activeTaskFormat[idx]] = cols[colIdx];
+                        });
+                        
+                        const docRef = doc(collection(db, "task_submissions"));
+                        batch.set(docRef, {
+                            uid: auth.currentUser.uid,
+                            taskId: activeTaskId,
+                            email: auth.currentUser.email,
+                            status: "pending",
+                            submissionData: submissionData,
+                            createdAt: serverTimestamp()
+                        });
+                        count++;
+                    }
+                    
+                    if(count > 0) {
+                        const userRef = doc(db, "users", auth.currentUser.uid);
+                        batch.update(userRef, { pendingTasks: increment(count) });
+                        await batch.commit();
+                        
+                        window.showToast(`Successfully submitted ${count} tasks!`);
+                        fileInput.value = '';
+                        closeTaskDetails();
+                    } else {
+                        await window.smartAlert("No valid data rows found to submit.", "warning");
+                    }
+                    
+                } catch(err) {
+                    await window.smartAlert("Error: " + err.message, "error");
+                }
+                setButtonLoading('btn-bulk-submit', false, 'Upload CSV File', 'fa-solid fa-cloud-arrow-up');
+            };
+            reader.readAsText(file);
         }
 
         window.submitWithdraw = async () => {
