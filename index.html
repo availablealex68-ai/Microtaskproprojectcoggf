@@ -235,7 +235,6 @@
                     </div>
                 </div>
                 
-                <!-- Fixed Leaderboard Container (No inner absolute heights) -->
                 <div class="relative w-full overflow-hidden" id="lb-slider-container">
                     <div id="lb-approved" class="w-full relative transition-transform duration-300 transform translate-x-0 opacity-100 z-10 flex flex-col">
                         <div class="light-pass shrink-0 bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-2xl mb-3 flex items-center gap-4 border-2 border-cyan-400 dark:border-cyan-500 shadow-md">
@@ -412,15 +411,9 @@
                                 <!-- Data will be injected here dynamically -->
                             </div>
                             
-                            <div id="div-2fa" class="mb-5 hidden">
-                                <label class="text-xs font-bold text-rose-500 dark:text-rose-400 mb-1 block">2FA Secret Key (Required)*</label>
-                                <input type="text" id="twoFaInput" oninput="generateOTP(this.value)" placeholder="Paste 2FA Secret here..." class="w-full bg-slate-100 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 transition-colors">
-                                <div id="otpDisplay" class="hidden mt-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-xl flex justify-between items-center cursor-pointer active:scale-scale-95 transition-transform" onclick="copyOTP(this)"><div><p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">Generated OTP</p><p id="otpCode" class="text-xl font-black text-emerald-700 dark:text-emerald-300 tracking-widest mt-1">------</p></div><i class="fa-regular fa-copy text-emerald-500 text-lg"></i></div>
-                            </div>
-                            <div id="div-cookie" class="mb-5 hidden">
-                                <label class="text-xs font-bold text-rose-500 dark:text-rose-400 mb-1 block">Submit Cookies (Min 100 Char)*</label>
-                                <textarea id="cookieInput" placeholder="Paste exported cookies array here [ { ... } ]" class="w-full h-24 bg-slate-100 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 transition-colors resize-none"></textarea>
-                            </div>
+                            <!-- Dynamic Inputs Area -->
+                            <div id="dynamic-inputs-area" class="space-y-4 mb-5"></div>
+                            
                             <button id="btn-task-submit" onclick="submitSingleTask()" class="w-full light-pass glow-pulse bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-sm flex justify-center items-center gap-2"><i class="fa-solid fa-check-circle"></i> <span>Submit Task</span></button>
                         </div>
                     </div>
@@ -460,8 +453,10 @@
 
     <!-- UI Scripts -->
     <script>
-        let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let activeTaskRequires2FA = false; let activeTaskRequiresCookies = false; let submittedTaskIds = []; let isFreshLogin = false;
-        let activeTaskPlatform = ''; let activeTaskPassword = ''; let currentOverlay = null;
+        let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let submittedTaskIds = []; let isFreshLogin = false;
+        
+        let activeTaskPlatform = ''; let activeTaskPassword = ''; let activeTaskFormat = [];
+        let currentOverlay = null;
 
         window.getPlatformStyles = (platform) => {
             let p = (platform || 'facebook').toLowerCase();
@@ -519,7 +514,6 @@
             if(id === 'task-detail-overlay') {
                 document.getElementById('task-instructions').style.display = 'block'; 
                 document.getElementById('task-action-area').style.display = 'none';
-                document.getElementById('twoFaInput').value=''; document.getElementById('cookieInput').value=''; document.getElementById('otpDisplay').classList.add('hidden');
             }
             currentOverlay = null;
         }
@@ -645,6 +639,39 @@
             html += `<div onclick="copyData('${passToShow}', this)" class="col-span-2 bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">Password</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400 tracking-wider">${passToShow}</p></div>`;
             
             credContainer.innerHTML = html;
+
+            // Generate Input Boxes based on format Array
+            const inputsArea = document.getElementById('dynamic-inputs-area');
+            let inputsHtml = '';
+            
+            if(activeTaskFormat.length > 0) {
+                activeTaskFormat.forEach((f, i) => {
+                    let fieldId = `sub-field-${i}`;
+                    let placeholder = `Enter ${f}...`;
+                    let isTextarea = (f.toLowerCase() === 'cookies' || f.toLowerCase() === 'token');
+                    
+                    if(f.toLowerCase() === '2fa') {
+                        inputsHtml += `<div>
+                            <label class="text-xs font-bold text-rose-500 dark:text-rose-400 mb-1 block">2FA Secret Key (Required)*</label>
+                            <input type="text" id="${fieldId}" data-name="${f}" oninput="window.generateOTP(this.value)" placeholder="Paste 2FA Secret here..." class="w-full bg-slate-100 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 transition-colors">
+                            <div id="otpDisplay" class="hidden mt-3 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 p-3 rounded-xl flex justify-between items-center cursor-pointer active:scale-95 transition-transform" onclick="window.copyOTP(this)"><div><p class="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">Generated OTP</p><p id="otpCode" class="text-xl font-black text-emerald-700 dark:text-emerald-300 tracking-widest mt-1">------</p></div><i class="fa-regular fa-copy text-emerald-500 text-lg"></i></div>
+                        </div>`;
+                    } else if(isTextarea) {
+                        inputsHtml += `<div>
+                            <label class="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">${f} (Required)*</label>
+                            <textarea id="${fieldId}" data-name="${f}" placeholder="${placeholder}" class="w-full h-20 bg-slate-100 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 transition-colors resize-none"></textarea>
+                        </div>`;
+                    } else {
+                        inputsHtml += `<div>
+                            <label class="text-xs font-bold text-slate-600 dark:text-slate-300 mb-1 block">${f} (Required)*</label>
+                            <input type="text" id="${fieldId}" data-name="${f}" placeholder="${placeholder}" class="w-full bg-slate-100 dark:bg-zinc-800/50 border border-slate-200 dark:border-zinc-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-cyan-500 transition-colors">
+                        </div>`;
+                    }
+                });
+            } else {
+                inputsHtml = `<p class="text-xs text-rose-500 text-center italic py-2">No submission format set for this task. You can just submit.</p>`;
+            }
+            inputsArea.innerHTML = inputsHtml;
         }
 
         window.cancelCurrentTask = () => {
@@ -663,19 +690,25 @@
             element.classList.add('bg-emerald-50', 'dark:bg-emerald-500/10', 'border-emerald-400', 'dark:border-emerald-500/50');
         }
 
-        function copyOTP(element) { navigator.clipboard.writeText(document.getElementById('otpCode').innerText); showFloatingText('OTP Copied!', element); }
+        window.copyOTP = (element) => { navigator.clipboard.writeText(document.getElementById('otpCode').innerText); showFloatingText('OTP Copied!', element); }
         function showFloatingText(msg, parent) { const floater = document.createElement('div'); floater.className = 'copy-floater'; floater.innerText = msg; parent.appendChild(floater); setTimeout(() => floater.remove(), 600); }
-        function generateOTP(val) { const display = document.getElementById('otpDisplay'); if(val.length > 8) { document.getElementById('otpCode').innerText = Math.floor(100000 + Math.random() * 900000); display.classList.remove('hidden'); } else { display.classList.add('hidden'); } }
+        window.generateOTP = (val) => { const display = document.getElementById('otpDisplay'); if(val.length > 8) { document.getElementById('otpCode').innerText = Math.floor(100000 + Math.random() * 900000); display.classList.remove('hidden'); } else { display.classList.add('hidden'); } }
 
-        window.openDynamicTask = (id, title, desc, req2fa, reqCook, platform, pass) => {
+        window.openDynamicTask = (id, title, desc, platform, pass) => {
             if(submittedTaskIds.includes(id)) return alert("You have already submitted this task!");
-            activeTaskId = id; activeTaskRequires2FA = req2fa; activeTaskRequiresCookies = reqCook;
-            activeTaskPlatform = platform || 'facebook'; activeTaskPassword = pass || '';
+            activeTaskId = id; 
+            activeTaskPlatform = platform || 'facebook'; 
+            activeTaskPassword = pass || '';
+            
+            let rawTaskData = localStorage.getItem('raw_tasks_cache');
+            if(rawTaskData) {
+                let cache = JSON.parse(rawTaskData);
+                let tData = cache.find(x => x.id === id);
+                if(tData && tData.formatArray) activeTaskFormat = tData.formatArray;
+                else activeTaskFormat = [];
+            } else { activeTaskFormat = []; }
             
             document.getElementById('task-detail-title').innerText = title; document.getElementById('task-detail-desc').innerText = desc;
-            
-            if(req2fa) document.getElementById('div-2fa').classList.remove('hidden'); else document.getElementById('div-2fa').classList.add('hidden');
-            if(reqCook) document.getElementById('div-cookie').classList.remove('hidden'); else document.getElementById('div-cookie').classList.add('hidden');
             
             const submitBtn = document.getElementById('btn-task-submit');
             submitBtn.disabled = false; submitBtn.classList.replace('from-slate-500', 'from-emerald-500'); submitBtn.classList.replace('to-slate-600', 'to-cyan-500'); submitBtn.classList.add('glow-pulse', 'active:scale-95');
@@ -712,6 +745,7 @@
         let verifyTimeLeft = 300;
         let isRegistering = false;
 
+        // Force browser persistence to fix auto-logout issues
         setPersistence(auth, browserLocalPersistence).catch((error) => { console.error("Persistence Error:", error); });
 
         getRedirectResult(auth).then((result) => {
@@ -721,9 +755,10 @@
         onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
-                    const hasGoogle = user.providerData.some(p => p.providerId === 'google.com');
+                    // Check if password provider is used for strict verification
+                    const isPasswordUser = user.providerData.some(p => p.providerId === 'password');
                     
-                    if (!user.emailVerified && !hasGoogle) {
+                    if (!user.emailVerified && isPasswordUser) {
                         if (isRegistering) return; 
                         startVerificationCheck(user); 
                         return;
@@ -865,6 +900,17 @@
         function loadDatabaseRealtime(user) {
             const uid = user.uid;
 
+            // Global Settings Check
+            onSnapshot(doc(db, "app_settings", "global"), (docSnap) => {
+                if(docSnap.exists()) {
+                    let tasksEnabled = docSnap.data().tasksEnabled ?? true;
+                    if(!tasksEnabled) {
+                        document.getElementById('task-list-container').innerHTML = `<div class="bg-rose-50 dark:bg-rose-500/10 p-5 rounded-2xl border border-rose-200 dark:border-rose-900/30 text-center"><i class="fa-solid fa-ban text-4xl text-rose-500 mb-3"></i><h3 class="font-bold text-rose-700 dark:text-rose-400">Tasks are Currently Disabled</h3><p class="text-xs text-rose-600 dark:text-rose-300 mt-1">Admin has paused all tasks. Check back later.</p></div>`;
+                        document.getElementById('task-count-badge').innerText = `0 Available`;
+                    }
+                }
+            });
+
             onSnapshot(doc(db, "users", uid), async (docSnap) => {
                 if(!docSnap.exists()){ return; }
                 const data = docSnap.data();
@@ -873,6 +919,13 @@
                 isUserVerified = data.kycVerified || false;
                 submittedTaskIds = data.submittedTasks || [];
                 
+                if(data.isBanned) {
+                    await auth.signOut();
+                    alert("Your account has been BANNED by Admin.");
+                    window.location.reload();
+                    return;
+                }
+
                 const displayName = data.name || user.displayName || user.email.split('@')[0];
                 const photoUrl = user.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=0D8ABC&color=fff&bold=true`;
                 
@@ -913,9 +966,19 @@
                 document.getElementById('profile-tab-name').innerHTML = displayName + verifyTickHTML;
             });
 
-            onSnapshot(collection(db, "tasks"), (snapshot) => {
+            onSnapshot(collection(db, "tasks"), async (snapshot) => {
+                // Check if globally disabled
+                const gSnap = await getDoc(doc(db, "app_settings", "global"));
+                let isEnabled = true;
+                if(gSnap.exists()) isEnabled = gSnap.data().tasksEnabled ?? true;
+                
+                if(!isEnabled) return; 
+
                 const list = document.getElementById('task-list-container');
                 document.getElementById('task-count-badge').innerText = `${snapshot.size} Available`;
+                
+                let cacheArray = [];
+
                 if(snapshot.empty) { list.innerHTML = `<p class="text-center text-sm text-slate-500 py-10">No active tasks at the moment.</p>`; } 
                 else {
                     let html = '';
@@ -929,24 +992,33 @@
                         const safePass = String(data.password || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
                         const safePlatform = String(data.platform || 'facebook').replace(/'/g, "\\'");
                         
+                        cacheArray.push({ id: docSnap.id, formatArray: data.formatArray || [] });
+
+                        let formatHtml = '';
+                        if(data.formatArray && Array.isArray(data.formatArray)) {
+                            data.formatArray.forEach(f => { formatHtml += `<span class="text-[8px] bg-slate-200 dark:bg-zinc-800 text-slate-500 px-1 rounded mx-0.5 border border-slate-300 dark:border-zinc-700">${f}</span>`; });
+                        }
+
                         const pStyles = window.getPlatformStyles(safePlatform);
 
                         html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', ${!!data.require2FA},${!!data.requireCookies}, '${safePlatform}', '${safePass}')`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}">
                             <div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div>
                             <div class="flex justify-between items-center">
                                 <div class="flex gap-3 items-center">
-                                    <div class="h-10 w-10 rounded-lg ${pStyles.bg} ${pStyles.text} flex items-center justify-center text-2xl drop-shadow-md">
+                                    <div class="h-10 w-10 rounded-xl ${pStyles.bg} ${pStyles.text} flex items-center justify-center text-2xl drop-shadow-md">
                                         <i class="fa-brands ${pStyles.icon}"></i>
                                     </div>
                                     <div>
                                         <p class="font-bold text-sm">${data.title}</p>
-                                        <p class="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">${data.require2FA ? '2FA • ' : ''}${data.requireCookies ? 'Cookies' : 'Simple Task'}</p>
+                                        <div class="mt-1 flex flex-wrap gap-1">${formatHtml}</div>
                                     </div>
                                 </div>
                                 <span class="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">${doneText}</span>
                             </div>
                         </div>`;
-                    }); list.innerHTML = html;
+                    }); 
+                    list.innerHTML = html;
+                    localStorage.setItem('raw_tasks_cache', JSON.stringify(cacheArray));
                 }
             });
 
@@ -982,12 +1054,24 @@
                 }
             });
 
+            // LEADERBOARD (Approved)
             onSnapshot(query(collection(db, "users"), orderBy("totalEarned", "desc"), limit(10)), (snapshot) => {
                 const listA = document.getElementById('lb-approved-list'); let htmlA = ''; let rank = 1;
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     htmlA += `<div class="bg-yellow-50 dark:bg-yellow-500/5 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-yellow-200 dark:border-yellow-500/30"><h1 class="text-2xl font-black text-yellow-500 w-6 text-center">${rank++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-yellow-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400">${data.approvedTasks || 0} Tasks done</p></div><p class="text-emerald-600 dark:text-emerald-400 font-bold">৳ ${data.totalEarned || 0}</p></div>`;
-                }); listA.innerHTML = htmlA;
+                }); listA.innerHTML = htmlA || `<p class="text-center text-sm text-slate-500 py-4">No approved data.</p>`;
+            });
+
+            // LEADERBOARD (Pending Tasks)
+            onSnapshot(query(collection(db, "users"), orderBy("pendingTasks", "desc"), limit(10)), (snapshot) => {
+                const listP = document.getElementById('lb-pending-list'); let htmlP = ''; let rank = 1;
+                snapshot.forEach((docSnap) => {
+                    const data = docSnap.data();
+                    if(data.pendingTasks > 0) {
+                        htmlP += `<div class="bg-cyan-50 dark:bg-cyan-900/10 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-cyan-200 dark:border-cyan-500/30"><h1 class="text-2xl font-black text-cyan-500 w-6 text-center">${rank++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-cyan-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p></div><p class="text-cyan-600 dark:text-cyan-400 font-bold">${data.pendingTasks} Pending</p></div>`;
+                    }
+                }); listP.innerHTML = htmlP || `<p class="text-center text-sm text-slate-500 py-4">No pending tasks found.</p>`;
             });
         }
 
@@ -1005,17 +1089,39 @@
 
         window.submitSingleTask = async () => {
             const uid = auth.currentUser.uid;
-            if(activeTaskRequires2FA) { const twoFa = document.getElementById('twoFaInput').value.trim(); if(!twoFa) return alert("Please provide the 2FA Secret Key!"); }
-            if(activeTaskRequiresCookies) { const cookies = document.getElementById('cookieInput').value.trim(); if(cookies.length < 100) return alert("Invalid Cookie! Must be at least 100 characters."); }
+            let submissionData = {};
+            
+            if(activeTaskFormat && activeTaskFormat.length > 0) {
+                for(let i=0; i<activeTaskFormat.length; i++) {
+                    const inputEl = document.getElementById(`sub-field-${i}`);
+                    if(inputEl) {
+                        const val = inputEl.value.trim();
+                        if(!val) return alert(`Please fill the required field: ${activeTaskFormat[i]}`);
+                        
+                        if(activeTaskFormat[i].toLowerCase() === 'cookies' && val.length < 50) return alert("Invalid Cookie! Must be longer.");
+                        submissionData[activeTaskFormat[i]] = val;
+                    }
+                }
+            }
 
             setButtonLoading('btn-task-submit', true, 'Processing...', 'fa-solid fa-spinner');
             try {
-                await addDoc(collection(db, "task_submissions"), { uid: uid, taskId: activeTaskId, email: auth.currentUser.email, status: "pending", timestamp: serverTimestamp() });
+                await addDoc(collection(db, "task_submissions"), { 
+                    uid: uid, 
+                    taskId: activeTaskId, 
+                    email: auth.currentUser.email, 
+                    status: "pending", 
+                    submissionData: submissionData,
+                    createdAt: serverTimestamp() 
+                });
+                
                 await updateDoc(doc(db, "users", uid), { pendingTasks: increment(1), submittedTasks: [...submittedTaskIds, activeTaskId] });
 
                 setButtonLoading('btn-task-submit', false, 'Submitted Successfully', 'fa-solid fa-check-double');
                 const submitBtn = document.getElementById('btn-task-submit'); submitBtn.disabled = true; submitBtn.classList.replace('from-emerald-500', 'from-slate-500'); submitBtn.classList.replace('to-cyan-500', 'to-slate-600'); submitBtn.classList.remove('glow-pulse', 'active:scale-95');
-                alert("Task submitted to Admin for review!"); setTimeout(() => { closeTaskDetails(); }, 1500);
+                alert("Task submitted to Admin for review!"); 
+                localStorage.removeItem('task_data_' + activeTaskId);
+                setTimeout(() => { closeTaskDetails(); }, 1500);
             } catch (e) { setButtonLoading('btn-task-submit', false, 'Submit Task', 'fa-solid fa-check-circle'); alert("Error submitting task: " + e.message); }
         }
 
