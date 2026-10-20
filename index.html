@@ -411,7 +411,7 @@
                                 <!-- Data will be injected here dynamically -->
                             </div>
                             
-                            <!-- Dynamic Inputs Area -->
+                            <!-- Dynamic Inputs Area (UID, 2FA, Cookies etc) -->
                             <div id="dynamic-inputs-area" class="space-y-4 mb-5"></div>
                             
                             <button id="btn-task-submit" onclick="submitSingleTask()" class="w-full light-pass glow-pulse bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-sm flex justify-center items-center gap-2"><i class="fa-solid fa-check-circle"></i> <span>Submit Task</span></button>
@@ -454,9 +454,7 @@
     <!-- UI Scripts -->
     <script>
         let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let submittedTaskIds = []; let isFreshLogin = false;
-        
-        let activeTaskPlatform = ''; let activeTaskPassword = ''; let activeTaskFormat = [];
-        let currentOverlay = null;
+        let activeTaskPlatform = ''; let activeTaskPassword = ''; let activeTaskFormat = []; let currentOverlay = null;
 
         window.getPlatformStyles = (platform) => {
             let p = (platform || 'facebook').toLowerCase();
@@ -636,7 +634,7 @@
                 html += `<div onclick="copyData('${data.firstName}', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">First Name</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400">${data.firstName}</p></div>`;
                 html += `<div onclick="copyData('${data.lastName}', this)" class="bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">Last Name</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400">${data.lastName}</p></div>`;
             }
-            html += `<div onclick="copyData('${passToShow}', this)" class="col-span-2 bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">Password</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400 tracking-wider">${passToShow}</p></div>`;
+            html += `<div onclick="copyData('${passToShow}', this)" class="col-span-2 bg-white dark:bg-darkCard p-3 rounded-xl border border-slate-200 dark:border-zinc-700 shadow-sm cursor-pointer relative active:scale-95 transition-colors duration-300 text-center"><p class="text-[10px] text-slate-400 mb-1">Default Password to Copy</p><p class="font-bold text-sm text-cyan-600 dark:text-cyan-400 tracking-wider">${passToShow}</p></div>`;
             
             credContainer.innerHTML = html;
 
@@ -644,8 +642,11 @@
             const inputsArea = document.getElementById('dynamic-inputs-area');
             let inputsHtml = '';
             
-            if(activeTaskFormat.length > 0) {
+            if(activeTaskFormat && activeTaskFormat.length > 0) {
                 activeTaskFormat.forEach((f, i) => {
+                    // Password input completely skipped
+                    if(f.toLowerCase() === 'password') return;
+
                     let fieldId = `sub-field-${i}`;
                     let placeholder = `Enter ${f}...`;
                     let isTextarea = (f.toLowerCase() === 'cookies' || f.toLowerCase() === 'token');
@@ -755,10 +756,16 @@
         onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
-                    // Check if password provider is used for strict verification
-                    const isPasswordUser = user.providerData.some(p => p.providerId === 'password');
+                    // Check if it's a strictly Google account
+                    let isGoogle = false;
+                    if(user.providerData) {
+                        user.providerData.forEach(p => {
+                            if(p.providerId.includes('google')) isGoogle = true;
+                        });
+                    }
                     
-                    if (!user.emailVerified && isPasswordUser) {
+                    // Bypass Verification entirely if logged in via Google
+                    if (!user.emailVerified && !isGoogle) {
                         if (isRegistering) return; 
                         startVerificationCheck(user); 
                         return;
@@ -767,6 +774,7 @@
                     try {
                         const userRef = doc(db, "users", user.uid);
                         const userSnap = await getDoc(userRef);
+                        // Prevent overriding existing user data when re-logging in with same email
                         if(!userSnap.exists()){
                             const defaultName = user.displayName || user.email.split('@')[0];
                             await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
@@ -781,7 +789,8 @@
                 }
             } catch(e) {
                 console.error(e);
-                auth.signOut(); showAuthScreen();
+                // Don't auto-logout to prevent loops
+                showAuthScreen();
             }
         });
 
@@ -900,12 +909,12 @@
         function loadDatabaseRealtime(user) {
             const uid = user.uid;
 
-            // Global Settings Check
+            // Global Settings Check for Task ON/OFF
             onSnapshot(doc(db, "app_settings", "global"), (docSnap) => {
                 if(docSnap.exists()) {
                     let tasksEnabled = docSnap.data().tasksEnabled ?? true;
                     if(!tasksEnabled) {
-                        document.getElementById('task-list-container').innerHTML = `<div class="bg-rose-50 dark:bg-rose-500/10 p-5 rounded-2xl border border-rose-200 dark:border-rose-900/30 text-center"><i class="fa-solid fa-ban text-4xl text-rose-500 mb-3"></i><h3 class="font-bold text-rose-700 dark:text-rose-400">Tasks are Currently Disabled</h3><p class="text-xs text-rose-600 dark:text-rose-300 mt-1">Admin has paused all tasks. Check back later.</p></div>`;
+                        document.getElementById('task-list-container').innerHTML = `<div class="bg-rose-50 dark:bg-rose-500/10 p-5 rounded-2xl border border-rose-200 dark:border-rose-900/30 text-center"><i class="fa-solid fa-ban text-4xl text-rose-500 mb-3"></i><h3 class="font-bold text-rose-700 dark:text-rose-400">There is no task at this moment</h3><p class="text-xs text-rose-600 dark:text-rose-300 mt-1">Please check after Sometime.</p></div>`;
                         document.getElementById('task-count-badge').innerText = `0 Available`;
                     }
                 }
@@ -967,7 +976,6 @@
             });
 
             onSnapshot(collection(db, "tasks"), async (snapshot) => {
-                // Check if globally disabled
                 const gSnap = await getDoc(doc(db, "app_settings", "global"));
                 let isEnabled = true;
                 if(gSnap.exists()) isEnabled = gSnap.data().tasksEnabled ?? true;
@@ -996,12 +1004,17 @@
 
                         let formatHtml = '';
                         if(data.formatArray && Array.isArray(data.formatArray)) {
-                            data.formatArray.forEach(f => { formatHtml += `<span class="text-[8px] bg-slate-200 dark:bg-zinc-800 text-slate-500 px-1 rounded mx-0.5 border border-slate-300 dark:border-zinc-700">${f}</span>`; });
+                            data.formatArray.forEach(f => { 
+                                // Hide Password field tag from showing here as well if you want
+                                if(f.toLowerCase() !== 'password') {
+                                    formatHtml += `<span class="text-[8px] bg-slate-200 dark:bg-zinc-800 text-slate-500 px-1 rounded mx-0.5 border border-slate-300 dark:border-zinc-700">${f}</span>`; 
+                                }
+                            });
                         }
 
                         const pStyles = window.getPlatformStyles(safePlatform);
 
-                        html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', ${!!data.require2FA},${!!data.requireCookies}, '${safePlatform}', '${safePass}')`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}">
+                        html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', '${safePlatform}', '${safePass}')`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}">
                             <div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div>
                             <div class="flex justify-between items-center">
                                 <div class="flex gap-3 items-center">
@@ -1054,23 +1067,23 @@
                 }
             });
 
-            // LEADERBOARD (Approved)
-            onSnapshot(query(collection(db, "users"), orderBy("totalEarned", "desc"), limit(10)), (snapshot) => {
-                const listA = document.getElementById('lb-approved-list'); let htmlA = ''; let rank = 1;
-                snapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    htmlA += `<div class="bg-yellow-50 dark:bg-yellow-500/5 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-yellow-200 dark:border-yellow-500/30"><h1 class="text-2xl font-black text-yellow-500 w-6 text-center">${rank++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-yellow-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400">${data.approvedTasks || 0} Tasks done</p></div><p class="text-emerald-600 dark:text-emerald-400 font-bold">৳ ${data.totalEarned || 0}</p></div>`;
-                }); listA.innerHTML = htmlA || `<p class="text-center text-sm text-slate-500 py-4">No approved data.</p>`;
-            });
+            // ALL USERS LEADERBOARD (Approved & Pending Local Build)
+            onSnapshot(collection(db, "users"), (snapshot) => {
+                let usersList = [];
+                snapshot.forEach(doc => { usersList.push(doc.data()); });
 
-            // LEADERBOARD (Pending Tasks)
-            onSnapshot(query(collection(db, "users"), orderBy("pendingTasks", "desc"), limit(10)), (snapshot) => {
-                const listP = document.getElementById('lb-pending-list'); let htmlP = ''; let rank = 1;
-                snapshot.forEach((docSnap) => {
-                    const data = docSnap.data();
-                    if(data.pendingTasks > 0) {
-                        htmlP += `<div class="bg-cyan-50 dark:bg-cyan-900/10 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-cyan-200 dark:border-cyan-500/30"><h1 class="text-2xl font-black text-cyan-500 w-6 text-center">${rank++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-cyan-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p></div><p class="text-cyan-600 dark:text-cyan-400 font-bold">${data.pendingTasks} Pending</p></div>`;
-                    }
+                // Approved Leaderboard
+                let approvedUsers = usersList.filter(u => u.totalEarned > 0).sort((a,b) => b.totalEarned - a.totalEarned).slice(0, 10);
+                const listA = document.getElementById('lb-approved-list'); let htmlA = ''; let rankA = 1;
+                approvedUsers.forEach((data) => {
+                    htmlA += `<div class="bg-yellow-50 dark:bg-yellow-500/5 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-yellow-200 dark:border-yellow-500/30"><h1 class="text-2xl font-black text-yellow-500 w-6 text-center">${rankA++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-yellow-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400">${data.approvedTasks || 0} Tasks done</p></div><p class="text-emerald-600 dark:text-emerald-400 font-bold">৳ ${data.totalEarned || 0}</p></div>`;
+                }); listA.innerHTML = htmlA || `<p class="text-center text-sm text-slate-500 py-4">No approved data.</p>`;
+
+                // Pending Leaderboard
+                let pendingUsers = usersList.filter(u => u.pendingTasks > 0).sort((a,b) => b.pendingTasks - a.pendingTasks).slice(0, 10);
+                const listP = document.getElementById('lb-pending-list'); let htmlP = ''; let rankP = 1;
+                pendingUsers.forEach((data) => {
+                    htmlP += `<div class="bg-cyan-50 dark:bg-cyan-900/10 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-cyan-200 dark:border-cyan-500/30"><h1 class="text-2xl font-black text-cyan-500 w-6 text-center">${rankP++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-cyan-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p></div><p class="text-cyan-600 dark:text-cyan-400 font-bold">${data.pendingTasks} Pending</p></div>`;
                 }); listP.innerHTML = htmlP || `<p class="text-center text-sm text-slate-500 py-4">No pending tasks found.</p>`;
             });
         }
@@ -1093,6 +1106,8 @@
             
             if(activeTaskFormat && activeTaskFormat.length > 0) {
                 for(let i=0; i<activeTaskFormat.length; i++) {
+                    if(activeTaskFormat[i].toLowerCase() === 'password') continue; // SKIP PASSWORD FIELD IN SUBMISSION
+                    
                     const inputEl = document.getElementById(`sub-field-${i}`);
                     if(inputEl) {
                         const val = inputEl.value.trim();
