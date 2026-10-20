@@ -59,6 +59,9 @@
         
         #auth-container { display: flex; }
         #main-app-container { display: none; }
+
+        .glass-modal { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .dark .glass-modal { background: rgba(24, 24, 27, 0.95); border: 1px solid rgba(255,255,255,0.05); }
     </style>
 </head>
 <body class="flex justify-center h-screen w-full overflow-hidden bg-slate-50 dark:bg-darkBg text-slate-900 dark:text-zinc-50 relative">
@@ -67,6 +70,16 @@
         <div class="flex flex-col items-center">
             <i class="fa-solid fa-spinner animate-spin text-4xl text-cyan-500 mb-3"></i>
             <p id="loader-text" class="text-sm font-bold text-slate-500 dark:text-zinc-400">Loading MicroTask Pro...</p>
+        </div>
+    </div>
+
+    <!-- SMART CUSTOM ALERTS (PREMIUM) -->
+    <div id="smart-alert-modal" class="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 px-4">
+        <div class="glass-modal p-6 rounded-3xl shadow-2xl w-full max-w-[320px] transform scale-95 transition-transform duration-300 text-center" id="smart-alert-content">
+            <div id="smart-alert-icon" class="mx-auto mb-4 h-16 w-16 rounded-full flex items-center justify-center text-3xl"></div>
+            <h3 class="text-xl font-extrabold text-slate-800 dark:text-white mb-2" id="smart-alert-title">MicroTask Pro</h3>
+            <p class="text-sm text-slate-500 dark:text-zinc-400 mb-6 leading-relaxed" id="smart-alert-message"></p>
+            <button id="smart-btn-confirm" class="w-full bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-sm">OK</button>
         </div>
     </div>
 
@@ -218,6 +231,12 @@
                         <p id="stat-approved-tasks" class="font-bold text-lg text-slate-800 dark:text-white">0</p>
                     </div>
                 </div>
+
+                <!-- NEW: Task History on Homepage -->
+                <h3 class="font-bold text-lg mb-3 mt-8 flex items-center"><i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i> Recent Task History</h3>
+                <div id="home-history-list" class="space-y-3 mb-6">
+                    <p class="text-xs text-slate-500 dark:text-zinc-400 text-center py-6 border border-dashed border-slate-300 dark:border-zinc-700 rounded-2xl">Loading history...</p>
+                </div>
             </section>
 
             <!-- TOP PAGE (Leaderboard) -->
@@ -258,7 +277,7 @@
             <!-- TASK PAGE -->
             <section id="page-task" class="app-page">
                 <div class="mb-5 flex justify-between items-end mt-2">
-                    <div><h2 class="text-2xl font-bold">New Tasks</h2></div>
+                    <div><h2 class="text-2xl font-bold">Available Tasks</h2></div>
                     <span id="task-count-badge" class="bg-cyan-100 text-cyan-600 dark:bg-cyan-500/10 dark:text-cyan-400 text-xs font-bold px-3 py-1.5 rounded-full animate-pulse">0 Available</span>
                 </div>
                 
@@ -385,14 +404,9 @@
             <!-- Dynamic Task Details Overlay -->
             <div id="task-detail-overlay" class="absolute inset-0 bg-slate-50 dark:bg-darkBg z-[60] hidden slide-in-right flex-col pb-6">
                 <div class="p-5 flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 shadow-sm bg-white/50 dark:bg-darkBg/50 backdrop-blur-md">
-                    <div class="flex items-center gap-4"><button onclick="closeTaskDetails()" class="h-8 w-8 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center active:scale-90 transition-transform"><i class="fa-solid fa-arrow-left"></i></button><h2 id="task-detail-title" class="text-lg font-bold">Task</h2></div>
-                    <button onclick="toggleBulkUpload()" class="text-xs font-bold text-cyan-600 bg-cyan-50 dark:bg-cyan-900/30 px-3 py-1.5 rounded-lg border border-cyan-200 dark:border-cyan-800 active:scale-95 transition-transform shadow-sm"><i class="fa-solid fa-layer-group mr-1"></i> Bulk</button>
+                    <div class="flex items-center gap-4"><button onclick="closeTaskDetails()" class="h-8 w-8 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center active:scale-90 transition-transform"><i class="fa-solid fa-arrow-left"></i></button><h2 id="task-detail-title" class="text-lg font-bold truncate max-w-[200px]">Task</h2></div>
                 </div>
                 <div class="flex-1 overflow-y-auto px-5 pt-4">
-                    <div id="task-bulk-area" class="hidden">
-                        <div class="bg-slate-100 dark:bg-zinc-800/50 p-5 rounded-2xl border border-slate-200 dark:border-zinc-700 text-center mb-5 border-dashed"><i class="fa-solid fa-file-csv text-4xl text-cyan-500 mb-3"></i><h3 class="font-bold mb-1">Bulk Submit Tasks</h3><p class="text-xs text-slate-500 dark:text-zinc-400 mb-4">Upload a .txt or .csv file containing multiple accounts.</p><input type="file" id="bulk-file" accept=".txt,.csv" class="w-full text-sm text-slate-500 dark:text-zinc-400 bg-white dark:bg-darkCard border border-slate-200 dark:border-zinc-700 p-2 rounded-xl mb-2 focus:outline-none"></div>
-                        <button id="btn-bulk-submit" onclick="submitBulkTask()" class="w-full light-pass glow-pulse bg-gradient-to-r from-cyan-500 to-emerald-500 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-transform text-sm"><i class="fa-solid fa-cloud-arrow-up mr-1"></i> Upload File</button>
-                    </div>
                     <div id="task-single-area">
                         <div id="task-instructions">
                             <div class="bg-blue-50 dark:bg-blue-500/10 p-4 rounded-xl border border-blue-100 dark:border-blue-500/20 mb-5">
@@ -414,7 +428,7 @@
                             <!-- Dynamic Inputs Area (UID, 2FA, Cookies etc) -->
                             <div id="dynamic-inputs-area" class="space-y-4 mb-5"></div>
                             
-                            <button id="btn-task-submit" onclick="submitSingleTask()" class="w-full light-pass glow-pulse bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3.5 rounded-xl shadow-lg active:scale-95 transition-all text-sm flex justify-center items-center gap-2"><i class="fa-solid fa-check-circle"></i> <span>Submit Task</span></button>
+                            <button id="btn-task-submit" onclick="submitSingleTask()" class="w-full light-pass glow-pulse bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all duration-200 text-sm flex justify-center items-center gap-2"><i class="fa-solid fa-check-circle" id="btn-submit-icon"></i> <span id="btn-submit-text">Submit Task</span></button>
                         </div>
                     </div>
                 </div>
@@ -428,12 +442,12 @@
             </div>
 
             <!-- Specific Notification Popup Modal -->
-            <div id="notif-detail-modal" class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300">
-                <div class="bg-white dark:bg-darkCard p-6 rounded-3xl shadow-2xl max-w-[320px] w-full border border-slate-200 dark:border-zinc-700 transform scale-95 transition-transform duration-300" id="notif-detail-content">
-                    <div class="flex justify-between items-start mb-4"><div id="notif-detail-icon" class="h-12 w-12 rounded-full flex items-center justify-center text-xl"></div><button onclick="closeNotifDetail()" class="text-slate-400 hover:text-rose-500 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button></div>
-                    <h3 id="notif-detail-title" class="text-xl font-bold text-slate-800 dark:text-white mb-2">Title</h3>
-                    <p id="notif-detail-msg" class="text-sm text-slate-600 dark:text-zinc-400 mb-5 leading-relaxed">Message goes here...</p>
-                    <div class="flex justify-between items-center border-t border-slate-100 dark:border-zinc-800 pt-3"><p id="notif-detail-time" class="text-[11px] text-slate-400 font-medium"><i class="fa-regular fa-clock"></i> Now</p><button onclick="closeNotifDetail()" class="text-[11px] font-bold text-cyan-500 bg-cyan-50 dark:bg-cyan-500/10 px-3 py-1.5 rounded-lg">Got it</button></div>
+            <div id="notif-detail-modal" class="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 px-4">
+                <div class="glass-modal p-6 rounded-3xl shadow-2xl w-full max-w-[320px] border border-slate-200 dark:border-zinc-700 transform scale-95 transition-transform duration-300" id="notif-detail-content">
+                    <div class="flex justify-between items-start mb-4"><div id="notif-detail-icon" class="h-14 w-14 rounded-full flex items-center justify-center text-2xl shadow-inner"></div><button onclick="closeNotifDetail()" class="text-slate-400 hover:text-rose-500 transition-colors"><i class="fa-solid fa-xmark text-xl"></i></button></div>
+                    <h3 id="notif-detail-title" class="text-xl font-black text-slate-800 dark:text-white mb-2 tracking-tight">Title</h3>
+                    <p id="notif-detail-msg" class="text-sm text-slate-600 dark:text-zinc-400 mb-6 leading-relaxed">Message goes here...</p>
+                    <div class="flex justify-between items-center border-t border-slate-100 dark:border-zinc-800 pt-4"><p id="notif-detail-time" class="text-[11px] text-slate-400 font-medium"><i class="fa-regular fa-clock"></i> Just Now</p><button onclick="closeNotifDetail()" class="text-[11px] font-bold text-white bg-slate-800 dark:bg-white dark:text-black px-4 py-2 rounded-xl active:scale-95 transition-transform">Got it</button></div>
                 </div>
             </div>
 
@@ -453,8 +467,50 @@
 
     <!-- UI Scripts -->
     <script>
-        let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let submittedTaskIds = []; let isFreshLogin = false;
+        let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let isFreshLogin = false;
         let activeTaskPlatform = ''; let activeTaskPassword = ''; let activeTaskFormat = []; let currentOverlay = null;
+
+        // PREMIUM SMART ALERTS
+        window.smartAlert = (msg, type = 'info') => {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('smart-alert-modal');
+                const content = document.getElementById('smart-alert-content');
+                const icon = document.getElementById('smart-alert-icon');
+                const title = document.getElementById('smart-alert-title');
+                const message = document.getElementById('smart-alert-message');
+                const btnConfirm = document.getElementById('smart-btn-confirm');
+
+                if (type === 'success') {
+                    icon.className = 'mx-auto mb-4 h-16 w-16 rounded-full flex items-center justify-center text-3xl bg-emerald-100 text-emerald-500 dark:bg-emerald-500/20 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30';
+                    icon.innerHTML = '<i class="fa-solid fa-check"></i>';
+                    btnConfirm.className = 'w-full bg-gradient-to-r from-emerald-500 to-emerald-400 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/30 active:scale-95 transition-all text-sm';
+                } else if (type === 'error') {
+                    icon.className = 'mx-auto mb-4 h-16 w-16 rounded-full flex items-center justify-center text-3xl bg-rose-100 text-rose-500 dark:bg-rose-500/20 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30';
+                    icon.innerHTML = '<i class="fa-solid fa-xmark"></i>';
+                    btnConfirm.className = 'w-full bg-gradient-to-r from-rose-500 to-rose-400 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-rose-500/30 active:scale-95 transition-all text-sm';
+                } else if (type === 'warning') {
+                    icon.className = 'mx-auto mb-4 h-16 w-16 rounded-full flex items-center justify-center text-3xl bg-amber-100 text-amber-500 dark:bg-amber-500/20 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30';
+                    icon.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+                    btnConfirm.className = 'w-full bg-gradient-to-r from-amber-500 to-amber-400 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-amber-500/30 active:scale-95 transition-all text-sm';
+                } else {
+                    icon.className = 'mx-auto mb-4 h-16 w-16 rounded-full flex items-center justify-center text-3xl bg-indigo-100 text-indigo-500 dark:bg-indigo-500/20 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30';
+                    icon.innerHTML = '<i class="fa-solid fa-bell"></i>';
+                    btnConfirm.className = 'w-full bg-gradient-to-r from-indigo-500 to-blue-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-500/30 active:scale-95 transition-all text-sm';
+                }
+
+                title.innerText = 'MicroTask Pro';
+                message.innerText = msg;
+
+                modal.classList.remove('opacity-0', 'pointer-events-none');
+                content.classList.remove('scale-95');
+
+                btnConfirm.onclick = () => {
+                    modal.classList.add('opacity-0', 'pointer-events-none');
+                    content.classList.add('scale-95');
+                    resolve(true);
+                };
+            });
+        }
 
         window.getPlatformStyles = (platform) => {
             let p = (platform || 'facebook').toLowerCase();
@@ -512,6 +568,13 @@
             if(id === 'task-detail-overlay') {
                 document.getElementById('task-instructions').style.display = 'block'; 
                 document.getElementById('task-action-area').style.display = 'none';
+                
+                // Reset Button styling back to normal if it was success
+                const submitBtn = document.getElementById('btn-task-submit');
+                submitBtn.classList.remove('bg-emerald-500', 'scale-95');
+                submitBtn.classList.add('bg-gradient-to-r', 'from-emerald-500', 'to-cyan-500', 'glow-pulse');
+                document.getElementById('btn-submit-icon').className = 'fa-solid fa-check-circle';
+                document.getElementById('btn-submit-text').innerText = 'Submit Task';
             }
             currentOverlay = null;
         }
@@ -572,7 +635,7 @@
             const visibleCards = document.querySelectorAll('.notice-card:not([style*="display: none"])');
             if(visibleCards.length === 0) { const badge = document.getElementById('notif-badge'); if(badge) badge.style.display = 'none'; }
 
-            const modal = document.getElementById('notif-detail-modal'); document.getElementById('notif-detail-title').innerText = title; document.getElementById('notif-detail-msg').innerText = msg; const iconDiv = document.getElementById('notif-detail-icon'); iconDiv.className = `h-12 w-12 rounded-full bg-${colorTheme}-100 dark:bg-${colorTheme}-500/20 text-${colorTheme}-500 flex items-center justify-center text-xl`; if(colorTheme === 'emerald') iconDiv.innerHTML = '<i class="fa-solid fa-check"></i>'; else iconDiv.innerHTML = '<i class="fa-regular fa-bell"></i>'; modal.classList.remove('pointer-events-none', 'opacity-0'); document.getElementById('notif-detail-content').classList.remove('scale-95'); 
+            const modal = document.getElementById('notif-detail-modal'); document.getElementById('notif-detail-title').innerText = title; document.getElementById('notif-detail-msg').innerText = msg; const iconDiv = document.getElementById('notif-detail-icon'); iconDiv.className = `h-14 w-14 rounded-full bg-${colorTheme}-100 dark:bg-${colorTheme}-500/20 text-${colorTheme}-500 flex items-center justify-center text-2xl shadow-inner border border-${colorTheme}-200 dark:border-${colorTheme}-500/30`; if(colorTheme === 'emerald') iconDiv.innerHTML = '<i class="fa-solid fa-check"></i>'; else if(colorTheme === 'rose') iconDiv.innerHTML = '<i class="fa-solid fa-xmark"></i>'; else iconDiv.innerHTML = '<i class="fa-regular fa-bell"></i>'; modal.classList.remove('pointer-events-none', 'opacity-0'); document.getElementById('notif-detail-content').classList.remove('scale-95'); 
         }
         window.closeNotifDetail = () => { const modal = document.getElementById('notif-detail-modal'); modal.classList.add('opacity-0', 'pointer-events-none'); document.getElementById('notif-detail-content').classList.add('scale-95'); }
         
@@ -646,6 +709,9 @@
                 activeTaskFormat.forEach((f, i) => {
                     // Password input completely skipped
                     if(f.toLowerCase() === 'password') return;
+                    
+                    // Instagram Username input skipped (will be auto-injected)
+                    if(activeTaskPlatform === 'instagram' && f.toLowerCase() === 'username') return;
 
                     let fieldId = `sub-field-${i}`;
                     let placeholder = `Enter ${f}...`;
@@ -696,7 +762,6 @@
         window.generateOTP = (val) => { const display = document.getElementById('otpDisplay'); if(val.length > 8) { document.getElementById('otpCode').innerText = Math.floor(100000 + Math.random() * 900000); display.classList.remove('hidden'); } else { display.classList.add('hidden'); } }
 
         window.openDynamicTask = (id, title, desc, platform, pass) => {
-            if(submittedTaskIds.includes(id)) return alert("You have already submitted this task!");
             activeTaskId = id; 
             activeTaskPlatform = platform || 'facebook'; 
             activeTaskPassword = pass || '';
@@ -709,11 +774,8 @@
                 else activeTaskFormat = [];
             } else { activeTaskFormat = []; }
             
-            document.getElementById('task-detail-title').innerText = title; document.getElementById('task-detail-desc').innerText = desc;
-            
-            const submitBtn = document.getElementById('btn-task-submit');
-            submitBtn.disabled = false; submitBtn.classList.replace('from-slate-500', 'from-emerald-500'); submitBtn.classList.replace('to-slate-600', 'to-cyan-500'); submitBtn.classList.add('glow-pulse', 'active:scale-95');
-            submitBtn.innerHTML = `<i class="fa-solid fa-check-circle"></i> <span>Submit Task</span>`;
+            document.getElementById('task-detail-title').innerText = title; 
+            document.getElementById('task-detail-desc').innerText = desc;
             
             openOverlay('task-detail-overlay'); 
         }
@@ -756,16 +818,16 @@
         onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
-                    // Check if it's a strictly Google account
-                    let isGoogle = false;
+                    // Strictly isolate Google vs Password users
+                    let isPasswordUser = false;
                     if(user.providerData) {
                         user.providerData.forEach(p => {
-                            if(p.providerId.includes('google')) isGoogle = true;
+                            if(p.providerId === 'password') isPasswordUser = true;
                         });
                     }
                     
                     // Bypass Verification entirely if logged in via Google
-                    if (!user.emailVerified && !isGoogle) {
+                    if (!user.emailVerified && isPasswordUser) {
                         if (isRegistering) return; 
                         startVerificationCheck(user); 
                         return;
@@ -774,10 +836,10 @@
                     try {
                         const userRef = doc(db, "users", user.uid);
                         const userSnap = await getDoc(userRef);
-                        // Prevent overriding existing user data when re-logging in with same email
+                        // Prevent overriding existing user data
                         if(!userSnap.exists()){
                             const defaultName = user.displayName || user.email.split('@')[0];
-                            await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                            await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified" });
                         }
                     } catch(err) { console.log("DB handled:", err); }
                     
@@ -789,7 +851,6 @@
                 }
             } catch(e) {
                 console.error(e);
-                // Don't auto-logout to prevent loops
                 showAuthScreen();
             }
         });
@@ -834,7 +895,7 @@
                             const userRef = doc(db, "users", user.uid);
                             const uSnap = await getDoc(userRef);
                             if(!uSnap.exists()) {
-                                await setDoc(userRef, { name: user.displayName || user.email.split('@')[0], email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified", submittedTasks: [] });
+                                await setDoc(userRef, { name: user.displayName || user.email.split('@')[0], email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified" });
                             }
                         } catch(err) { console.log("DB Init:", err); }
                         
@@ -858,10 +919,10 @@
                 setButtonLoading('btn-resend-link', true, 'Sending...', 'fa-solid fa-spinner');
                 try {
                     await sendEmailVerification(user);
-                    alert("Verification link sent again to your email!");
+                    await window.smartAlert("Verification link sent again to your email!", "success");
                     startVerificationCheck(user); 
                 } catch(e) {
-                    alert("Error: " + e.message);
+                    await window.smartAlert("Error: " + e.message, "error");
                 }
                 setButtonLoading('btn-resend-link', false, 'Resend Link', 'fa-solid fa-rotate-right');
             }
@@ -926,11 +987,10 @@
                 
                 currentUserBalance = data.balance || 0;
                 isUserVerified = data.kycVerified || false;
-                submittedTaskIds = data.submittedTasks || [];
                 
                 if(data.isBanned) {
                     await auth.signOut();
-                    alert("Your account has been BANNED by Admin.");
+                    await window.smartAlert("Your account has been BANNED by Admin.", "error");
                     window.location.reload();
                     return;
                 }
@@ -991,58 +1051,98 @@
                 else {
                     let html = '';
                     snapshot.forEach((docSnap) => {
-                        const data = docSnap.data(); const isDone = submittedTaskIds.includes(docSnap.id);
-                        const doneClass = isDone ? 'opacity-50 pointer-events-none' : 'cursor-pointer active:scale-95 transition-transform';
-                        const doneText = isDone ? 'Submitted' : `৳ ${data.reward}`;
-                        
-                        const safeTitle = String(data.title || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                        const safeDesc = String(data.desc || '').replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, "\\n");
-                        const safePass = String(data.password || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
-                        const safePlatform = String(data.platform || 'facebook').replace(/'/g, "\\'");
-                        
-                        cacheArray.push({ id: docSnap.id, formatArray: data.formatArray || [] });
+                        try {
+                            const data = docSnap.data(); 
+                            
+                            const safeTitle = String(data.title || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                            const safeDesc = String(data.desc || '').replace(/'/g, "\\'").replace(/"/g, "&quot;").replace(/\n/g, "\\n");
+                            const safePass = String(data.password || '').replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                            const safePlatform = String(data.platform || 'facebook').replace(/'/g, "\\'");
+                            
+                            cacheArray.push({ id: docSnap.id, formatArray: data.formatArray || [] });
 
-                        let formatHtml = '';
-                        if(data.formatArray && Array.isArray(data.formatArray)) {
-                            data.formatArray.forEach(f => { 
-                                // Hide Password field tag from showing here as well if you want
-                                if(f.toLowerCase() !== 'password') {
-                                    formatHtml += `<span class="text-[8px] bg-slate-200 dark:bg-zinc-800 text-slate-500 px-1 rounded mx-0.5 border border-slate-300 dark:border-zinc-700">${f}</span>`; 
-                                }
-                            });
-                        }
+                            let formatHtml = '';
+                            if(data.formatArray && Array.isArray(data.formatArray)) {
+                                data.formatArray.forEach(f => { 
+                                    if(f.toLowerCase() !== 'password') {
+                                        formatHtml += `<span class="text-[8px] bg-slate-200 dark:bg-zinc-800 text-slate-500 px-1 rounded mx-0.5 border border-slate-300 dark:border-zinc-700">${f}</span>`; 
+                                    }
+                                });
+                            }
 
-                        const pStyles = window.getPlatformStyles(safePlatform);
+                            const pStyles = window.getPlatformStyles(safePlatform);
 
-                        html += `<div onclick="${isDone ? '' : `openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', '${safePlatform}', '${safePass}')`}" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative ${doneClass}">
-                            <div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div>
-                            <div class="flex justify-between items-center">
-                                <div class="flex gap-3 items-center">
-                                    <div class="h-10 w-10 rounded-xl ${pStyles.bg} ${pStyles.text} flex items-center justify-center text-2xl drop-shadow-md">
-                                        <i class="fa-brands ${pStyles.icon}"></i>
+                            html += `<div onclick="openDynamicTask('${docSnap.id}', '${safeTitle}', '${safeDesc}', '${safePlatform}', '${safePass}')" class="float-1 light-pass bg-white dark:bg-darkCard p-5 rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-md relative cursor-pointer active:scale-95 transition-transform">
+                                <div class="absolute top-0 left-0 w-1 h-full bg-cyan-500 rounded-l-2xl"></div>
+                                <div class="flex justify-between items-center">
+                                    <div class="flex gap-3 items-center">
+                                        <div class="h-10 w-10 rounded-xl ${pStyles.bg} ${pStyles.text} flex items-center justify-center text-2xl drop-shadow-md">
+                                            <i class="fa-brands ${pStyles.icon}"></i>
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-sm">${data.title}</p>
+                                            <div class="mt-1 flex flex-wrap gap-1">${formatHtml}</div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p class="font-bold text-sm">${data.title}</p>
-                                        <div class="mt-1 flex flex-wrap gap-1">${formatHtml}</div>
-                                    </div>
+                                    <span class="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">৳ ${data.reward}</span>
                                 </div>
-                                <span class="bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 text-xs font-bold px-3 py-1.5 rounded-lg border border-emerald-100 dark:border-emerald-500/20">${doneText}</span>
-                            </div>
-                        </div>`;
+                            </div>`;
+                        } catch(e) { console.error("Error parsing task:", e); }
                     }); 
                     list.innerHTML = html;
                     localStorage.setItem('raw_tasks_cache', JSON.stringify(cacheArray));
                 }
             });
 
+            // HOME PAGE RECENT TASK HISTORY
+            onSnapshot(query(collection(db, "task_submissions"), where("uid", "==", uid), orderBy("createdAt", "desc"), limit(10)), (snapshot) => {
+                const list = document.getElementById('home-history-list');
+                if(snapshot.empty) {
+                    list.innerHTML = `<p class="text-xs text-slate-500 dark:text-zinc-400 text-center py-6 border border-dashed border-slate-300 dark:border-zinc-700 rounded-2xl">No recent tasks found.</p>`;
+                } else {
+                    let html = '';
+                    snapshot.forEach(docSnap => {
+                        const data = docSnap.data();
+                        const shortId = docSnap.id.substring(0, 7).toUpperCase();
+                        
+                        let tName = 'Task Submission';
+                        let rawTaskData = localStorage.getItem('raw_tasks_cache');
+                        if(rawTaskData) {
+                            let cache = JSON.parse(rawTaskData);
+                            let tData = cache.find(x => x.id === data.taskId);
+                            if(tData && window.allTasksData) {
+                                let liveT = window.allTasksData.find(t => t.id === data.taskId);
+                                if(liveT) tName = liveT.title;
+                            }
+                        }
+
+                        html += `<div class="bg-white dark:bg-darkCard p-4 rounded-xl border border-slate-200 dark:border-zinc-800 shadow-sm flex justify-between items-center mb-3">
+                            <div>
+                                <p class="font-bold text-sm text-slate-800 dark:text-white mb-1">${tName}</p>
+                                <p class="text-[10px] text-slate-500 font-mono">ID: ${shortId}</p>
+                            </div>
+                            <span class="text-[10px] font-bold px-3 py-1 rounded bg-amber-100 text-amber-600 dark:bg-amber-500/20 uppercase tracking-widest border border-amber-200 dark:border-amber-500/30">Pending</span>
+                        </div>`;
+                    });
+                    list.innerHTML = html;
+                }
+            });
+
+            // TARGETED NOTICES
             onSnapshot(collection(db, "notices"), (snapshot) => {
                 const list = document.getElementById('notif-list'), badge = document.getElementById('notif-badge');
                 let html = ''; let newCount = 0; let clearedNotices = JSON.parse(localStorage.getItem('clearedNotices')) || [];
                 snapshot.forEach((docSnap) => {
-                    if(!clearedNotices.includes(docSnap.id)) {
-                        newCount++; const data = docSnap.data();
-                        const safeTitle = String(data.title || '').replace(/'/g, "\\'"); const safeMsg = String(data.msg || '').replace(/'/g, "\\'");
-                        html += `<div data-id="${docSnap.id}" onclick="openNotifDetail('${docSnap.id}', '${safeTitle}', '${safeMsg}', '${data.theme}')" class="notice-card p-4 bg-white dark:bg-darkCard rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm relative overflow-hidden cursor-pointer active:scale-95 transition-transform"><div class="absolute top-0 left-0 w-1 h-full bg-${data.theme}-500"></div><h3 class="font-bold text-sm mb-1">${data.title}</h3><p class="text-xs text-slate-500 dark:text-zinc-400 truncate">${data.msg}</p></div>`;
+                    const data = docSnap.data();
+                    
+                    // Show notice if it's Global OR specifically targeted to this user
+                    if (data.isGlobal || data.targetUid === uid) {
+                        if(!clearedNotices.includes(docSnap.id)) {
+                            newCount++; 
+                            const safeTitle = String(data.title || '').replace(/'/g, "\\'"); 
+                            const safeMsg = String(data.msg || '').replace(/'/g, "\\'");
+                            html += `<div data-id="${docSnap.id}" onclick="openNotifDetail('${docSnap.id}', '${safeTitle}', '${safeMsg}', '${data.theme}')" class="notice-card p-4 bg-white dark:bg-darkCard rounded-2xl border border-slate-200 dark:border-zinc-800 shadow-sm relative overflow-hidden cursor-pointer active:scale-95 transition-transform"><div class="absolute top-0 left-0 w-1 h-full bg-${data.theme}-500"></div><h3 class="font-bold text-sm mb-1">${data.title}</h3><p class="text-xs text-slate-500 dark:text-zinc-400 truncate">${data.msg}</p></div>`;
+                        }
                     }
                 });
                 if(newCount === 0) { list.innerHTML = ''; list.style.display = 'none'; document.getElementById('notif-empty').style.display = 'flex'; badge.style.display='none'; } 
@@ -1061,7 +1161,7 @@
                 else {
                     let html = '';
                     snapshot.forEach((docSnap) => {
-                        const data = docSnap.data(); const sColor = data.status === 'paid' ? 'emerald' : 'amber';
+                        const data = docSnap.data(); const sColor = data.status === 'paid' ? 'emerald' : (data.status === 'rejected' ? 'rose' : 'amber');
                         html += `<div class="bg-white dark:bg-darkCard p-3 rounded-xl flex items-center justify-between border border-slate-200 dark:border-zinc-800 shadow-sm"><div class="flex items-center gap-3"><div class="h-10 w-10 rounded-full bg-cyan-100 dark:bg-cyan-500/10 flex items-center justify-center text-cyan-500"><i class="fa-solid fa-building-columns"></i></div><div><p class="font-bold text-sm capitalize">${data.method}</p></div></div><div class="text-right"><p class="font-bold text-sm">৳ ${data.amount}</p><span class="text-[9px] font-bold bg-${sColor}-100 text-${sColor}-600 dark:bg-${sColor}-500/20 px-2 py-0.5 rounded uppercase">${data.status}</span></div></div>`;
                     }); list.innerHTML = html;
                 }
@@ -1096,8 +1196,8 @@
             try {
                 await setDoc(doc(db, "kyc_requests", uid), { uid: uid, name: auth.currentUser.displayName || auth.currentUser.email, email: auth.currentUser.email, timestamp: serverTimestamp() });
                 await updateDoc(doc(db, "users", uid), { kycStatus: "pending" });
-                alert("KYC Submitted for Admin Review!");
-            } catch (e) { alert("Error: " + e.message); btn.style.pointerEvents = 'auto'; }
+                await window.smartAlert("KYC Submitted for Admin Review!", "success");
+            } catch (e) { await window.smartAlert("Error: " + e.message, "error"); btn.style.pointerEvents = 'auto'; }
         }
 
         window.submitSingleTask = async () => {
@@ -1106,20 +1206,27 @@
             
             if(activeTaskFormat && activeTaskFormat.length > 0) {
                 for(let i=0; i<activeTaskFormat.length; i++) {
-                    if(activeTaskFormat[i].toLowerCase() === 'password') continue; // SKIP PASSWORD FIELD IN SUBMISSION
+                    if(activeTaskFormat[i].toLowerCase() === 'password') continue;
+                    
+                    // Auto catch generated Username for Instagram Task without asking user
+                    if(activeTaskPlatform === 'instagram' && activeTaskFormat[i].toLowerCase() === 'username') {
+                        let localData = JSON.parse(localStorage.getItem('task_data_' + activeTaskId));
+                        submissionData[activeTaskFormat[i]] = localData ? localData.username : 'Unknown';
+                        continue;
+                    }
                     
                     const inputEl = document.getElementById(`sub-field-${i}`);
                     if(inputEl) {
                         const val = inputEl.value.trim();
-                        if(!val) return alert(`Please fill the required field: ${activeTaskFormat[i]}`);
+                        if(!val) return await window.smartAlert(`Please fill the required field: ${activeTaskFormat[i]}`, "warning");
                         
-                        if(activeTaskFormat[i].toLowerCase() === 'cookies' && val.length < 50) return alert("Invalid Cookie! Must be longer.");
+                        if(activeTaskFormat[i].toLowerCase() === 'cookies' && val.length < 50) return await window.smartAlert("Invalid Cookie! Must be longer.", "warning");
                         submissionData[activeTaskFormat[i]] = val;
                     }
                 }
             }
 
-            setButtonLoading('btn-task-submit', true, 'Processing...', 'fa-solid fa-spinner');
+            setButtonLoading('btn-task-submit', true, '', 'fa-solid fa-spinner');
             try {
                 await addDoc(collection(db, "task_submissions"), { 
                     uid: uid, 
@@ -1130,43 +1237,63 @@
                     createdAt: serverTimestamp() 
                 });
                 
-                await updateDoc(doc(db, "users", uid), { pendingTasks: increment(1), submittedTasks: [...submittedTaskIds, activeTaskId] });
+                await updateDoc(doc(db, "users", uid), { pendingTasks: increment(1) });
 
-                setButtonLoading('btn-task-submit', false, 'Submitted Successfully', 'fa-solid fa-check-double');
-                const submitBtn = document.getElementById('btn-task-submit'); submitBtn.disabled = true; submitBtn.classList.replace('from-emerald-500', 'from-slate-500'); submitBtn.classList.replace('to-cyan-500', 'to-slate-600'); submitBtn.classList.remove('glow-pulse', 'active:scale-95');
-                alert("Task submitted to Admin for review!"); 
+                // Fast UI Response without alert
+                const submitBtn = document.getElementById('btn-task-submit'); 
+                submitBtn.disabled = true; 
+                submitBtn.classList.replace('from-emerald-500', 'bg-emerald-500'); 
+                submitBtn.classList.replace('to-cyan-500', 'bg-emerald-500'); 
+                submitBtn.classList.replace('bg-gradient-to-r', 'bg-none');
+                submitBtn.classList.add('scale-95');
+                
+                document.getElementById('btn-submit-icon').className = 'fa-solid fa-check-double';
+                document.getElementById('btn-submit-text').innerText = 'Success!';
+                
                 localStorage.removeItem('task_data_' + activeTaskId);
-                setTimeout(() => { closeTaskDetails(); }, 1500);
-            } catch (e) { setButtonLoading('btn-task-submit', false, 'Submit Task', 'fa-solid fa-check-circle'); alert("Error submitting task: " + e.message); }
+                
+                setTimeout(() => { closeTaskDetails(); }, 600); // Super fast auto close
+
+            } catch (e) { 
+                setButtonLoading('btn-task-submit', false, 'Submit Task', 'fa-solid fa-check-circle'); 
+                await window.smartAlert("Error submitting task: " + e.message, "error"); 
+            }
         }
 
         window.submitWithdraw = async () => {
-            if (!isUserVerified) { alert("Withdrawal Blocked! Your identity (KYC) is not verified."); closeWithdraw(); switchAppTab('profile'); return; }
+            if (!isUserVerified) { await window.smartAlert("Withdrawal Blocked! Your identity (KYC) is not verified.", "error"); closeWithdraw(); switchAppTab('profile'); return; }
             const method = document.getElementById('withdraw-method').value, account = document.getElementById('withdraw-account').value.trim(), amount = parseFloat(document.getElementById('withdraw-amount').value);
-            if (!method) return alert("No payment methods available."); if (!account) return alert("Please enter your account number/ID."); if (!amount || amount < 100) return alert("Minimum withdrawal is ৳100."); if (amount > currentUserBalance) return alert("Insufficient balance!");
+            if (!method) return await window.smartAlert("No payment methods available.", "warning"); 
+            if (!account) return await window.smartAlert("Please enter your account number/ID.", "warning"); 
+            if (!amount || amount < 100) return await window.smartAlert("Minimum withdrawal is ৳100.", "warning"); 
+            if (amount > currentUserBalance) return await window.smartAlert("Insufficient balance!", "error");
 
             setButtonLoading('btn-withdraw-submit', true, 'Processing...', 'fa-solid fa-spinner');
             try {
                 await addDoc(collection(db, "withdrawals"), { uid: auth.currentUser.uid, email: auth.currentUser.email, method: method, account: account, amount: amount, status: "pending", timestamp: serverTimestamp() });
                 await updateDoc(doc(db, "users", auth.currentUser.uid), { balance: increment(-amount), totalWithdrawn: increment(amount) });
-                setButtonLoading('btn-withdraw-submit', false, 'Request Withdrawal', 'fa-solid fa-money-bill-transfer'); document.getElementById('withdraw-amount').value = ''; alert(`Withdrawal request of ৳${amount} submitted!`);
-            } catch (e) { setButtonLoading('btn-withdraw-submit', false, 'Request Withdrawal', 'fa-solid fa-money-bill-transfer'); alert("Error: " + e.message); }
+                setButtonLoading('btn-withdraw-submit', false, 'Request Withdrawal', 'fa-solid fa-money-bill-transfer'); 
+                document.getElementById('withdraw-amount').value = ''; 
+                await window.smartAlert(`Withdrawal request of ৳${amount} submitted!`, "success");
+            } catch (e) { setButtonLoading('btn-withdraw-submit', false, 'Request Withdrawal', 'fa-solid fa-money-bill-transfer'); await window.smartAlert("Error: " + e.message, "error"); }
         }
 
         window.saveSettings = async () => {
             const newName = document.getElementById('setting-name').value.trim(), newPass = document.getElementById('setting-password').value.trim();
-            if(!newName && !newPass) return alert("Nothing to update!");
+            if(!newName && !newPass) return await window.smartAlert("Nothing to update!", "warning");
             setButtonLoading('btn-save-settings', true, 'Saving...', 'fa-solid fa-spinner');
             try {
                 if(newName) { await updateProfile(auth.currentUser, { displayName: newName }); await updateDoc(doc(db, "users", auth.currentUser.uid), { name: newName }); }
                 if(newPass) await updatePassword(auth.currentUser, newPass);
-                setButtonLoading('btn-save-settings', false, 'Saved Successfully', 'fa-solid fa-check'); setTimeout(() => { closeSettings(); setButtonLoading('btn-save-settings', false, 'Save Changes', 'fa-solid fa-floppy-disk'); alert("Profile updated!"); }, 1000);
-            } catch (error) { setButtonLoading('btn-save-settings', false, 'Save Changes', 'fa-solid fa-floppy-disk'); alert("Error: " + error.message); }
+                setButtonLoading('btn-save-settings', false, 'Saved Successfully', 'fa-solid fa-check'); 
+                setTimeout(async () => { closeSettings(); setButtonLoading('btn-save-settings', false, 'Save Changes', 'fa-solid fa-floppy-disk'); await window.smartAlert("Profile updated!", "success"); }, 1000);
+            } catch (error) { setButtonLoading('btn-save-settings', false, 'Save Changes', 'fa-solid fa-floppy-disk'); await window.smartAlert("Error: " + error.message, "error"); }
         }
 
         window.registerUser = async () => {
             const name = document.getElementById('reg-name').value.trim(), email = document.getElementById('reg-email').value.trim(), password = document.getElementById('reg-password').value.trim();
-            if(!name || !email || !password) return alert("Please fill all fields!"); if(password.length < 6) return alert("Password min 6 chars.");
+            if(!name || !email || !password) return await window.smartAlert("Please fill all fields!", "warning"); 
+            if(password.length < 6) return await window.smartAlert("Password min 6 chars.", "warning");
             
             setButtonLoading('btn-reg-submit', true, 'Processing...', 'fa-solid fa-spinner'); 
             isFreshLogin = true; isRegistering = true;
@@ -1177,7 +1304,7 @@
                 await sendEmailVerification(cred.user);
                 startVerificationCheck(cred.user);
             } catch (e) { 
-                alert("Registration Error: " + e.message); 
+                await window.smartAlert("Registration Error: " + e.message, "error"); 
             } finally {
                 setButtonLoading('btn-reg-submit', false, 'Create Account', 'fa-solid fa-user-plus');
                 isRegistering = false; 
@@ -1204,7 +1331,7 @@
 
         window.loginUser = async () => {
             const email = document.getElementById('login-email').value.trim(), password = document.getElementById('login-password').value.trim();
-            if(!email || !password) return alert("Enter email and password!");
+            if(!email || !password) return await window.smartAlert("Enter email and password!", "warning");
             
             setButtonLoading('btn-login-submit', true, 'Processing...', 'fa-solid fa-spinner'); 
             isFreshLogin = true;
@@ -1212,11 +1339,11 @@
             try {
                 const cred = await signInWithEmailAndPassword(auth, email, password);
                 if(!cred.user.emailVerified) { 
-                    alert("Please verify email first!"); 
+                    await window.smartAlert("Please verify email first!", "warning"); 
                     await auth.signOut(); 
                 }
             } catch (e) { 
-                alert("Login Failed: Incorrect email or password."); 
+                await window.smartAlert("Login Failed: Incorrect email or password.", "error"); 
             } finally {
                 setButtonLoading('btn-login-submit', false, 'Login', 'fa-solid fa-right-to-bracket');
             }
@@ -1232,7 +1359,7 @@
                 if (isSocialBrowser) { await signInWithRedirect(auth, provider); } 
                 else { await signInWithPopup(auth, provider); }
             } catch (error) {
-                alert("Google Login error: Please try opening the app in Chrome/Safari browser.");
+                await window.smartAlert("Google Login error: Please try opening the app in Chrome/Safari browser.", "error");
             } finally {
                 setButtonLoading('btn-google-login', false, 'Google Account', 'fa-brands fa-google text-red-500');
             }
