@@ -232,7 +232,6 @@
                     </div>
                 </div>
 
-                <!-- NEW: Task History on Homepage -->
                 <h3 class="font-bold text-lg mb-3 mt-8 flex items-center"><i class="fa-solid fa-clock-rotate-left text-indigo-500 mr-2"></i> Recent Task History</h3>
                 <div id="home-history-list" class="space-y-3 mb-6">
                     <p class="text-xs text-slate-500 dark:text-zinc-400 text-center py-6 border border-dashed border-slate-300 dark:border-zinc-700 rounded-2xl">Loading history...</p>
@@ -428,6 +427,7 @@
                             <!-- Dynamic Inputs Area (UID, 2FA, Cookies etc) -->
                             <div id="dynamic-inputs-area" class="space-y-4 mb-5"></div>
                             
+                            <!-- Button ID preserved correctly to prevent null errors -->
                             <button id="btn-task-submit" onclick="submitSingleTask()" class="w-full light-pass glow-pulse bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all duration-200 text-sm flex justify-center items-center gap-2"><i class="fa-solid fa-check-circle" id="btn-submit-icon"></i> <span id="btn-submit-text">Submit Task</span></button>
                         </div>
                     </div>
@@ -569,12 +569,13 @@
                 document.getElementById('task-instructions').style.display = 'block'; 
                 document.getElementById('task-action-area').style.display = 'none';
                 
-                // Reset Button styling back to normal if it was success
                 const submitBtn = document.getElementById('btn-task-submit');
+                submitBtn.disabled = false;
                 submitBtn.classList.remove('bg-emerald-500', 'scale-95');
                 submitBtn.classList.add('bg-gradient-to-r', 'from-emerald-500', 'to-cyan-500', 'glow-pulse');
-                document.getElementById('btn-submit-icon').className = 'fa-solid fa-check-circle';
-                document.getElementById('btn-submit-text').innerText = 'Submit Task';
+                
+                // Re-inject intact HTML structure for next open
+                submitBtn.innerHTML = `<i class="fa-solid fa-check-circle" id="btn-submit-icon"></i> <span id="btn-submit-text">Submit Task</span>`;
             }
             currentOverlay = null;
         }
@@ -701,16 +702,12 @@
             
             credContainer.innerHTML = html;
 
-            // Generate Input Boxes based on format Array
             const inputsArea = document.getElementById('dynamic-inputs-area');
             let inputsHtml = '';
             
             if(activeTaskFormat && activeTaskFormat.length > 0) {
                 activeTaskFormat.forEach((f, i) => {
-                    // Password input completely skipped
                     if(f.toLowerCase() === 'password') return;
-                    
-                    // Instagram Username input skipped (will be auto-injected)
                     if(activeTaskPlatform === 'instagram' && f.toLowerCase() === 'username') return;
 
                     let fieldId = `sub-field-${i}`;
@@ -741,14 +738,13 @@
             inputsArea.innerHTML = inputsHtml;
         }
 
-        window.cancelCurrentTask = () => {
-            if(confirm("Are you sure you want to cancel? New data will be generated next time you enter this task.")) {
+        window.cancelCurrentTask = async () => {
+            const confirmed = await window.smartAlert("Are you sure you want to cancel? New data will be generated next time you enter this task.", "confirm");
+            if(confirmed) {
                 localStorage.removeItem('task_data_' + activeTaskId);
                 closeTaskDetails();
             }
         }
-
-        function toggleBulkUpload() { const singleArea = document.getElementById('task-single-area'), bulkArea = document.getElementById('task-bulk-area'); if(bulkArea.style.display === 'block') { bulkArea.style.display = 'none'; singleArea.style.display = 'block'; } else { singleArea.style.display = 'none'; bulkArea.style.display = 'block'; } }
         
         window.copyData = (text, element) => { 
             navigator.clipboard.writeText(text); 
@@ -776,6 +772,14 @@
             
             document.getElementById('task-detail-title').innerText = title; 
             document.getElementById('task-detail-desc').innerText = desc;
+            
+            const submitBtn = document.getElementById('btn-task-submit');
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('bg-emerald-500', 'scale-95');
+            submitBtn.classList.add('bg-gradient-to-r', 'from-emerald-500', 'to-cyan-500', 'glow-pulse');
+            
+            // Critical fix to preserve ID mapping for super fast submission
+            submitBtn.innerHTML = `<i class="fa-solid fa-check-circle" id="btn-submit-icon"></i> <span id="btn-submit-text">Submit Task</span>`;
             
             openOverlay('task-detail-overlay'); 
         }
@@ -808,7 +812,6 @@
         let verifyTimeLeft = 300;
         let isRegistering = false;
 
-        // Force browser persistence to fix auto-logout issues
         setPersistence(auth, browserLocalPersistence).catch((error) => { console.error("Persistence Error:", error); });
 
         getRedirectResult(auth).then((result) => {
@@ -818,7 +821,6 @@
         onAuthStateChanged(auth, async (user) => {
             try {
                 if (user) {
-                    // Strictly isolate Google vs Password users
                     let isPasswordUser = false;
                     if(user.providerData) {
                         user.providerData.forEach(p => {
@@ -826,7 +828,6 @@
                         });
                     }
                     
-                    // Bypass Verification entirely if logged in via Google
                     if (!user.emailVerified && isPasswordUser) {
                         if (isRegistering) return; 
                         startVerificationCheck(user); 
@@ -836,7 +837,6 @@
                     try {
                         const userRef = doc(db, "users", user.uid);
                         const userSnap = await getDoc(userRef);
-                        // Prevent overriding existing user data
                         if(!userSnap.exists()){
                             const defaultName = user.displayName || user.email.split('@')[0];
                             await setDoc(userRef, { name: defaultName, email: user.email, balance: 0, totalEarned: 0, totalWithdrawn: 0, pendingTasks: 0, approvedTasks: 0, kycVerified: false, kycStatus: "unverified" });
@@ -970,7 +970,6 @@
         function loadDatabaseRealtime(user) {
             const uid = user.uid;
 
-            // Global Settings Check for Task ON/OFF
             onSnapshot(doc(db, "app_settings", "global"), (docSnap) => {
                 if(docSnap.exists()) {
                     let tasksEnabled = docSnap.data().tasksEnabled ?? true;
@@ -1001,6 +1000,7 @@
                 document.getElementById('profile-display-email').innerText = data.email || user.email;
                 document.getElementById('user-profile-pic').src = photoUrl;
                 document.getElementById('profile-tab-pic').src = photoUrl;
+                document.getElementById('lb-current-user-pic').src = photoUrl;
                 document.getElementById('lb-current-name').innerText = `(${displayName})`;
                 
                 document.getElementById('main-balance').innerText = currentUserBalance.toLocaleString();
@@ -1110,9 +1110,10 @@
                         if(rawTaskData) {
                             let cache = JSON.parse(rawTaskData);
                             let tData = cache.find(x => x.id === data.taskId);
-                            if(tData && window.allTasksData) {
-                                let liveT = window.allTasksData.find(t => t.id === data.taskId);
-                                if(liveT) tName = liveT.title;
+                            if(tData) {
+                                // Since we don't have allTasksData in user panel live sync array globally saved with title,
+                                // we will just show submission ID clearly.
+                                tName = 'Live Task Submission';
                             }
                         }
 
@@ -1135,7 +1136,6 @@
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
                     
-                    // Show notice if it's Global OR specifically targeted to this user
                     if (data.isGlobal || data.targetUid === uid) {
                         if(!clearedNotices.includes(docSnap.id)) {
                             newCount++; 
@@ -1167,24 +1167,26 @@
                 }
             });
 
-            // ALL USERS LEADERBOARD (Approved & Pending Local Build)
+            // ALL USERS LEADERBOARD WITH FALLBACK AND RULES ERROR HANDLING
             onSnapshot(collection(db, "users"), (snapshot) => {
                 let usersList = [];
                 snapshot.forEach(doc => { usersList.push(doc.data()); });
 
-                // Approved Leaderboard
                 let approvedUsers = usersList.filter(u => u.totalEarned > 0).sort((a,b) => b.totalEarned - a.totalEarned).slice(0, 10);
                 const listA = document.getElementById('lb-approved-list'); let htmlA = ''; let rankA = 1;
                 approvedUsers.forEach((data) => {
                     htmlA += `<div class="bg-yellow-50 dark:bg-yellow-500/5 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-yellow-200 dark:border-yellow-500/30"><h1 class="text-2xl font-black text-yellow-500 w-6 text-center">${rankA++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-yellow-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p><p class="text-[11px] text-slate-500 dark:text-zinc-400">${data.approvedTasks || 0} Tasks done</p></div><p class="text-emerald-600 dark:text-emerald-400 font-bold">৳ ${data.totalEarned || 0}</p></div>`;
                 }); listA.innerHTML = htmlA || `<p class="text-center text-sm text-slate-500 py-4">No approved data.</p>`;
 
-                // Pending Leaderboard
                 let pendingUsers = usersList.filter(u => u.pendingTasks > 0).sort((a,b) => b.pendingTasks - a.pendingTasks).slice(0, 10);
                 const listP = document.getElementById('lb-pending-list'); let htmlP = ''; let rankP = 1;
                 pendingUsers.forEach((data) => {
                     htmlP += `<div class="bg-cyan-50 dark:bg-cyan-900/10 p-4 rounded-2xl mb-3 flex items-center gap-4 border border-cyan-200 dark:border-cyan-500/30"><h1 class="text-2xl font-black text-cyan-500 w-6 text-center">${rankP++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-cyan-500 text-xl"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm">${data.name}</p></div><p class="text-cyan-600 dark:text-cyan-400 font-bold">${data.pendingTasks} Pending</p></div>`;
                 }); listP.innerHTML = htmlP || `<p class="text-center text-sm text-slate-500 py-4">No pending tasks found.</p>`;
+            }, (error) => {
+                // FALLBACK FOR FIREBASE RULE ERROR
+                document.getElementById('lb-approved-list').innerHTML = `<div class="bg-rose-50 dark:bg-rose-500/10 p-4 rounded-xl border border-rose-200 dark:border-rose-500/30 text-center"><i class="fa-solid fa-triangle-exclamation text-rose-500 text-2xl mb-2"></i><p class="text-xs text-rose-600 dark:text-rose-400 font-bold">Database Rules Error!</p><p class="text-[10px] text-rose-500 mt-1">Please ask Admin to update Firebase Rules to allow read access.</p></div>`;
+                document.getElementById('lb-pending-list').innerHTML = `<p class="text-xs text-rose-500 text-center py-4">Database Rules Error.</p>`;
             });
         }
 
@@ -1208,7 +1210,6 @@
                 for(let i=0; i<activeTaskFormat.length; i++) {
                     if(activeTaskFormat[i].toLowerCase() === 'password') continue;
                     
-                    // Auto catch generated Username for Instagram Task without asking user
                     if(activeTaskPlatform === 'instagram' && activeTaskFormat[i].toLowerCase() === 'username') {
                         let localData = JSON.parse(localStorage.getItem('task_data_' + activeTaskId));
                         submissionData[activeTaskFormat[i]] = localData ? localData.username : 'Unknown';
@@ -1226,7 +1227,14 @@
                 }
             }
 
-            setButtonLoading('btn-task-submit', true, '', 'fa-solid fa-spinner');
+            const submitBtn = document.getElementById('btn-task-submit'); 
+            const btnIcon = document.getElementById('btn-submit-icon');
+            
+            // Fast loading UI
+            submitBtn.disabled = true;
+            btnIcon.className = "fa-solid fa-spinner animate-spin";
+            document.getElementById('btn-submit-text').innerText = "Processing...";
+
             try {
                 await addDoc(collection(db, "task_submissions"), { 
                     uid: uid, 
@@ -1239,23 +1247,23 @@
                 
                 await updateDoc(doc(db, "users", uid), { pendingTasks: increment(1) });
 
-                // Fast UI Response without alert
-                const submitBtn = document.getElementById('btn-task-submit'); 
-                submitBtn.disabled = true; 
+                // Fast UI Response
                 submitBtn.classList.replace('from-emerald-500', 'bg-emerald-500'); 
                 submitBtn.classList.replace('to-cyan-500', 'bg-emerald-500'); 
                 submitBtn.classList.replace('bg-gradient-to-r', 'bg-none');
                 submitBtn.classList.add('scale-95');
                 
-                document.getElementById('btn-submit-icon').className = 'fa-solid fa-check-double';
+                btnIcon.className = 'fa-solid fa-check-double';
                 document.getElementById('btn-submit-text').innerText = 'Success!';
                 
                 localStorage.removeItem('task_data_' + activeTaskId);
                 
-                setTimeout(() => { closeTaskDetails(); }, 600); // Super fast auto close
+                setTimeout(() => { closeTaskDetails(); }, 500); 
 
             } catch (e) { 
-                setButtonLoading('btn-task-submit', false, 'Submit Task', 'fa-solid fa-check-circle'); 
+                btnIcon.className = "fa-solid fa-check-circle";
+                document.getElementById('btn-submit-text').innerText = "Submit Task";
+                submitBtn.disabled = false;
                 await window.smartAlert("Error submitting task: " + e.message, "error"); 
             }
         }
