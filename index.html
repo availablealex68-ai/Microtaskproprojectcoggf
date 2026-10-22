@@ -6,7 +6,6 @@
     <title>MicroTask Pro - Ultimate App</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- SheetJS library for XLSX Parsing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script>
         tailwind.config = { darkMode: 'class', theme: { extend: { colors: { darkBg: '#050505', darkCard: '#111111', } } } }
@@ -68,7 +67,7 @@
         .form-panel { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); will-change: transform, opacity; }
         
         select { -webkit-appearance: none; -moz-appearance: none; appearance: none; }
-        input[type=file]::file-selector-button { background: linear-gradient(to right, #8b5cf6, #6366f1); color: white; border: none; padding: 8px 18px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: transform 0.2s ease; margin-right: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        input[type=file]::file-selector-button { background: linear-gradient(to right, #8b5cf6, #6366f1); color: white; border: none; padding: 8px 18px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: transform 0.2s ease; margin-right: 15px; shadow: 0 4px 6px rgba(0,0,0,0.1); }
         input[type=file]::file-selector-button:active { transform: scale(0.95); }
         
         #auth-container { display: flex; }
@@ -96,20 +95,18 @@
         <div class="absolute -bottom-40 left-20 w-80 h-80 rounded-full opacity-40 animate-blob animation-delay-4000" style="background: radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%);"></div>
     </div>
 
-    <!-- SUPPORT BUBBLE (SWIPEABLE & RIGHT ALIGNED) -->
-    <div id="support-bubble" class="fixed bottom-28 right-5 z-[90] flex flex-col-reverse items-center gap-3 hidden">
-        <button id="support-main-btn" class="h-12 w-12 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_8px_20px_rgba(59,130,246,0.4)] flex items-center justify-center text-xl transition-transform active:scale-90 border border-white/20">
+    <!-- SUPPORT BUBBLE -->
+    <div id="support-bubble" class="fixed bottom-28 left-5 z-[90] flex flex-col-reverse items-center gap-3 hidden">
+        <button onclick="toggleSupport()" class="h-12 w-12 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_8px_20px_rgba(59,130,246,0.4)] flex items-center justify-center text-xl transition-transform active:scale-90 border border-white/20">
             <i class="fa-solid fa-headset" id="support-icon"></i>
         </button>
         <div id="support-links" class="flex flex-col gap-3 opacity-0 pointer-events-none transition-all duration-300 transform translate-y-4">
             <a id="link-whatsapp" href="#" target="_blank" class="h-11 w-11 rounded-full bg-[#25D366] text-white flex items-center justify-center text-2xl shadow-lg hover:scale-110 active:scale-95 transition-transform hidden border border-white/20"><i class="fa-brands fa-whatsapp"></i></a>
             <a id="link-telegram" href="#" target="_blank" class="h-11 w-11 rounded-full bg-[#0088cc] text-white flex items-center justify-center text-xl shadow-lg hover:scale-110 active:scale-95 transition-transform hidden border border-white/20"><i class="fa-brands fa-telegram"></i></a>
-            <!-- Developer Icon -->
-            <button onclick="openDevModal()" class="h-11 w-11 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 text-white flex items-center justify-center text-xl shadow-lg hover:scale-110 active:scale-95 transition-transform border border-white/20"><i class="fa-solid fa-code"></i></button>
         </div>
     </div>
 
-    <!-- TOP TOAST NOTIFICATION (Premium Success Message) -->
+    <!-- TOP TOAST NOTIFICATION -->
     <div id="top-toast" class="bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-5 py-3.5 rounded-full flex items-center gap-3 border border-emerald-400 backdrop-blur-md">
         <div class="h-7 w-7 bg-white/20 rounded-full flex items-center justify-center shadow-inner"><i class="fa-solid fa-check text-sm drop-shadow-md"></i></div>
         <span id="toast-msg" class="font-bold text-sm tracking-wide">Task Submitted!</span>
@@ -553,21 +550,6 @@
         </nav>
     </div>
 
-    <!-- Developer Modal Overlay -->
-    <div id="dev-modal" class="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/80 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300 px-4">
-        <div class="glass-modal p-8 rounded-3xl shadow-2xl w-full max-w-[320px] transform scale-95 transition-transform duration-300 text-center relative border border-slate-200 dark:border-white/10" id="dev-modal-content">
-            <button onclick="closeDevModal()" class="absolute top-5 right-5 h-8 w-8 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center text-slate-500 hover:text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-500/20 active:scale-90 transition-all"><i class="fa-solid fa-xmark"></i></button>
-            <div class="mx-auto mb-4 h-24 w-24 rounded-full flex items-center justify-center text-5xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white shadow-[0_10px_25px_rgba(79,70,229,0.4)] overflow-hidden border-4 border-indigo-200 dark:border-indigo-500/30">
-                <i class="fa-solid fa-user-astronaut"></i>
-            </div>
-            <h3 class="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Md Walid</h3>
-            <p class="text-xs text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-widest mb-6 mt-1">Developer</p>
-            <a href="https://t.me/Ad_Walid" target="_blank" class="w-full bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-black py-4 rounded-xl shadow-lg shadow-blue-500/30 active:scale-95 transition-all text-sm flex justify-center items-center gap-2 tracking-wide">
-                <i class="fa-brands fa-telegram text-xl"></i> Contact Now
-            </a>
-        </div>
-    </div>
-
     <!-- UI Scripts -->
     <script>
         let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let isFreshLogin = false;
@@ -588,59 +570,10 @@
                     }
                 }, 500);
             }
-
-            // Draggable Support Bubble Logic
-            const dragBtn = document.getElementById('support-main-btn');
-            const bubble = document.getElementById('support-bubble');
-            let isDragging = false, isMoved = false;
-            let startX, startY, initialLeft, initialTop;
-
-            dragBtn.addEventListener('touchstart', (e) => {
-                isDragging = true;
-                isMoved = false;
-                startX = e.touches[0].clientX;
-                startY = e.touches[0].clientY;
-                
-                const rect = bubble.getBoundingClientRect();
-                initialLeft = rect.left;
-                initialTop = rect.top;
-                
-                bubble.style.transition = 'none';
-            }, {passive: true});
-
-            dragBtn.addEventListener('touchmove', (e) => {
-                if (!isDragging) return;
-                const dx = e.touches[0].clientX - startX;
-                const dy = e.touches[0].clientY - startY;
-                
-                if(Math.abs(dx) > 5 || Math.abs(dy) > 5) {
-                    isMoved = true;
-                    e.preventDefault(); 
-                    bubble.style.right = 'auto';
-                    bubble.style.bottom = 'auto';
-                    
-                    let newLeft = initialLeft + dx;
-                    let newTop = initialTop + dy;
-                    
-                    if(newLeft < 0) newLeft = 0;
-                    if(newTop < 0) newTop = 0;
-                    if(newLeft + bubble.offsetWidth > window.innerWidth) newLeft = window.innerWidth - bubble.offsetWidth;
-                    if(newTop + bubble.offsetHeight > window.innerHeight) newTop = window.innerHeight - bubble.offsetHeight;
-                    
-                    bubble.style.left = `${newLeft}px`;
-                    bubble.style.top = `${newTop}px`;
-                }
-            }, {passive: false});
-
-            dragBtn.addEventListener('touchend', () => {
-                isDragging = false;
-                bubble.style.transition = 'all 0.3s ease';
-            });
         });
 
-        // Support Bubble Click Logic
-        window.toggleSupport = (e) => {
-            if(window.event && window.event.type === 'touchend' && isMoved) return; // Prevent click if dragged
+        // Support Bubble Logic
+        window.toggleSupport = () => {
             const links = document.getElementById('support-links');
             const icon = document.getElementById('support-icon');
             if (links.classList.contains('opacity-0')) {
@@ -651,16 +584,6 @@
                 icon.classList.replace('fa-xmark', 'fa-headset');
             }
         }
-
-        // Developer Modal Logic
-        window.openDevModal = () => {
-            document.getElementById('dev-modal').classList.remove('opacity-0', 'pointer-events-none');
-            document.getElementById('dev-modal-content').classList.remove('scale-95');
-        };
-        window.closeDevModal = () => {
-            document.getElementById('dev-modal').classList.add('opacity-0', 'pointer-events-none');
-            document.getElementById('dev-modal-content').classList.add('scale-95');
-        };
 
         // Copy Referral Link
         window.copyReferLink = () => {
@@ -1047,6 +970,7 @@
                                 referCode: defaultRefCode, referredBy: "", commissionGenerated: 0
                             });
                         } else {
+                            // Update old users with referCode if missing
                             if(!userSnap.data().referCode) {
                                 await updateDoc(userRef, { referCode: user.uid.substring(0, 8).toUpperCase(), commissionGenerated: 0 });
                             }
@@ -1318,7 +1242,7 @@
                 }
             });
 
-            // RECENT TASK HISTORY (UPDATED DYNAMIC STATUS)
+            // RECENT TASK HISTORY
             onSnapshot(query(collection(db, "task_submissions"), where("uid", "==", uid)), (snapshot) => {
                 const list = document.getElementById('home-history-list');
                 
@@ -1351,28 +1275,16 @@
                             let tData = cache.find(x => x.id === data.taskId);
                             if(tData) tName = 'Live Task Submission';
                         }
-                        
-                        // Dynamic Status Logic
-                        let badgeColor = 'amber';
-                        let statusTxt = 'Pending';
-                        
-                        if(data.status === 'approved') {
-                            badgeColor = 'emerald';
-                            statusTxt = 'Approved';
-                        } else if(data.status === 'rejected') {
-                            badgeColor = 'rose';
-                            statusTxt = 'Rejected';
-                        }
 
                         html += `<div class="glass-card p-4 rounded-2xl shadow-sm flex justify-between items-center mb-3 transition-transform hover:-translate-y-0.5">
                             <div class="flex items-center gap-3">
-                                <div class="h-10 w-10 bg-indigo-500/10 rounded-xl text-indigo-500 flex items-center justify-center text-lg"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                                <div class="h-10 w-10 bg-amber-500/10 rounded-xl text-amber-500 flex items-center justify-center text-lg"><i class="fa-solid fa-clock-rotate-left"></i></div>
                                 <div>
                                     <p class="font-bold text-sm text-slate-800 dark:text-white mb-0.5 tracking-tight">${tName}</p>
                                     <p class="text-[10px] text-slate-500 dark:text-zinc-400 font-mono font-bold tracking-widest">ID: ${shortId}</p>
                                 </div>
                             </div>
-                            <span class="text-[10px] font-black px-3 py-1.5 rounded-lg bg-${badgeColor}-100 text-${badgeColor}-600 dark:bg-${badgeColor}-500/20 uppercase tracking-widest border border-${badgeColor}-200 dark:border-${badgeColor}-500/30">${statusTxt}</span>
+                            <span class="text-[10px] font-black px-3 py-1.5 rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-500/20 uppercase tracking-widest border border-amber-200 dark:border-amber-500/30">Pending</span>
                         </div>`;
                     });
                     list.innerHTML = html;
@@ -1729,4 +1641,4 @@
         
     </script>
 </body>
-</html>
+    </html>
