@@ -84,6 +84,8 @@
 
         #top-toast { position: fixed; top: -100px; left: 50%; transform: translateX(-50%); z-index: 9999; transition: top 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); box-shadow: 0 15px 30px -5px rgba(0,0,0,0.3); }
         #top-toast.show { top: 24px; }
+
+        .support-item { will-change: transform, opacity; }
     </style>
 </head>
 <body class="flex justify-center h-screen w-full overflow-hidden bg-slate-100 dark:bg-darkBg text-slate-900 dark:text-zinc-50 relative">
@@ -95,14 +97,34 @@
         <div class="absolute -bottom-40 left-20 w-80 h-80 rounded-full opacity-40 animate-blob animation-delay-4000" style="background: radial-gradient(circle, rgba(99,102,241,0.3) 0%, transparent 70%);"></div>
     </div>
 
-    <!-- SUPPORT BUBBLE -->
-    <div id="support-bubble" class="fixed bottom-28 left-5 z-[90] flex flex-col-reverse items-center gap-3 hidden">
-        <button onclick="toggleSupport()" class="h-12 w-12 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_8px_20px_rgba(59,130,246,0.4)] flex items-center justify-center text-xl transition-transform active:scale-90 border border-white/20">
-            <i class="fa-solid fa-headset" id="support-icon"></i>
+    <!-- DRAGGABLE SUPPORT BUBBLE -->
+    <div id="support-bubble" class="fixed bottom-28 right-5 z-[90] flex flex-col items-center gap-3 hidden" style="touch-action: none;">
+        <div id="support-links" class="flex flex-col gap-3 pointer-events-none w-full items-center">
+            <!-- Items appear from top to bottom relative to button -->
+            <button onclick="window.showDevModal()" class="support-item h-12 w-12 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 text-white flex items-center justify-center text-xl shadow-lg hover:scale-110 active:scale-95 transition-all duration-300 transform scale-0 opacity-0 translate-y-6 border border-white/20"><i class="fa-solid fa-code"></i></button>
+            <a id="link-whatsapp" href="#" target="_blank" class="support-item h-12 w-12 rounded-full bg-[#25D366] text-white flex items-center justify-center text-2xl shadow-lg hover:scale-110 active:scale-95 transition-all duration-300 transform scale-0 opacity-0 translate-y-6 border border-white/20"><i class="fa-brands fa-whatsapp"></i></a>
+            <a id="link-telegram" href="#" target="_blank" class="support-item h-12 w-12 rounded-full bg-[#0088cc] text-white flex items-center justify-center text-xl shadow-lg hover:scale-110 active:scale-95 transition-all duration-300 transform scale-0 opacity-0 translate-y-6 border border-white/20"><i class="fa-brands fa-telegram"></i></a>
+        </div>
+        <button id="support-main-btn" class="h-14 w-14 rounded-full bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-[0_8px_20px_rgba(59,130,246,0.4)] flex items-center justify-center text-2xl transition-transform active:scale-90 border border-white/20">
+            <i class="fa-solid fa-headset transition-transform duration-300" id="support-icon"></i>
         </button>
-        <div id="support-links" class="flex flex-col gap-3 opacity-0 pointer-events-none transition-all duration-300 transform translate-y-4">
-            <a id="link-whatsapp" href="#" target="_blank" class="h-11 w-11 rounded-full bg-[#25D366] text-white flex items-center justify-center text-2xl shadow-lg hover:scale-110 active:scale-95 transition-transform hidden border border-white/20"><i class="fa-brands fa-whatsapp"></i></a>
-            <a id="link-telegram" href="#" target="_blank" class="h-11 w-11 rounded-full bg-[#0088cc] text-white flex items-center justify-center text-xl shadow-lg hover:scale-110 active:scale-95 transition-transform hidden border border-white/20"><i class="fa-brands fa-telegram"></i></a>
+    </div>
+
+    <!-- Developer Info Modal -->
+    <div id="dev-modal" class="fixed inset-0 z-[1100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm opacity-0 pointer-events-none transition-opacity duration-300 px-4">
+        <div class="glass-modal p-8 rounded-3xl shadow-2xl w-full max-w-[320px] transform scale-95 transition-transform duration-300 text-center relative overflow-hidden" id="dev-modal-content">
+            <div class="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-violet-600 to-fuchsia-600"></div>
+            <button onclick="closeDevModal()" class="absolute top-4 right-4 h-8 w-8 bg-black/20 rounded-full text-white flex items-center justify-center backdrop-blur-md active:scale-90 transition-transform"><i class="fa-solid fa-xmark"></i></button>
+            
+            <div class="relative z-10 mx-auto mt-4 mb-4 h-24 w-24 rounded-full border-4 border-white dark:border-darkCard overflow-hidden shadow-lg bg-slate-200">
+                <img src="https://ui-avatars.com/api/?name=Md+Walid&background=8b5cf6&color=fff&size=128&bold=true" alt="Md Walid" class="w-full h-full object-cover">
+            </div>
+            <h3 class="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Md Walid</h3>
+            <p class="text-xs font-bold text-violet-500 uppercase tracking-widest mb-6 mt-1">Developer</p>
+            
+            <a href="https://t.me/Ad_Walid" target="_blank" class="w-full bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-500/30 active:scale-95 transition-all text-sm flex justify-center items-center gap-2">
+                <i class="fa-brands fa-telegram text-lg"></i> <span>Contact Now</span>
+            </a>
         </div>
     </div>
 
@@ -555,6 +577,79 @@
         let currentUserBalance = 0; let isUserVerified = false; let activeTaskId = null; let isFreshLogin = false;
         let activeTaskPlatform = ''; let activeTaskPassword = ''; let activeTaskFormat = []; let currentOverlay = null;
 
+        // DRAGGABLE SUPPORT BUBBLE LOGIC
+        const supportBubble = document.getElementById('support-bubble');
+        let isDraggingBubble = false;
+        let bubbleDragged = false;
+        let bStartX, bStartY, bStartLeft, bStartTop;
+
+        supportBubble.addEventListener('touchstart', (e) => {
+            isDraggingBubble = true;
+            bubbleDragged = false;
+            let touch = e.touches[0];
+            bStartX = touch.clientX;
+            bStartY = touch.clientY;
+            let rect = supportBubble.getBoundingClientRect();
+            bStartLeft = rect.left;
+            bStartTop = rect.top;
+        }, {passive: false});
+
+        supportBubble.addEventListener('touchmove', (e) => {
+            if(!isDraggingBubble) return;
+            let touch = e.touches[0];
+            let dx = touch.clientX - bStartX;
+            let dy = touch.clientY - bStartY;
+            if(Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+                bubbleDragged = true;
+                e.preventDefault(); 
+            }
+            supportBubble.style.left = (bStartLeft + dx) + 'px';
+            supportBubble.style.top = (bStartTop + dy) + 'px';
+            supportBubble.style.bottom = 'auto'; 
+            supportBubble.style.right = 'auto'; 
+        }, {passive: false});
+
+        supportBubble.addEventListener('touchend', () => { isDraggingBubble = false; });
+
+        document.getElementById('support-main-btn').addEventListener('click', (e) => {
+            if(bubbleDragged) { e.preventDefault(); return; }
+            const links = document.getElementById('support-links');
+            const icon = document.getElementById('support-icon');
+            const items = document.querySelectorAll('.support-item');
+            
+            if (links.classList.contains('pointer-events-none')) {
+                links.classList.remove('pointer-events-none');
+                icon.classList.replace('fa-headset', 'fa-xmark');
+                icon.style.transform = 'rotate(90deg)';
+                items.forEach((item, idx) => {
+                    item.classList.remove('hidden'); 
+                    setTimeout(() => {
+                        item.classList.remove('scale-0', 'opacity-0', 'translate-y-6');
+                    }, (items.length - 1 - idx) * 60); 
+                });
+            } else {
+                icon.classList.replace('fa-xmark', 'fa-headset');
+                icon.style.transform = 'rotate(0deg)';
+                items.forEach((item) => {
+                    item.classList.add('scale-0', 'opacity-0', 'translate-y-6');
+                });
+                setTimeout(() => {
+                    links.classList.add('pointer-events-none');
+                }, 300);
+            }
+        });
+
+        window.showDevModal = () => {
+            const modal = document.getElementById('dev-modal');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.getElementById('dev-modal-content').classList.remove('scale-95');
+        };
+        window.closeDevModal = () => {
+            const modal = document.getElementById('dev-modal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.getElementById('dev-modal-content').classList.add('scale-95');
+        };
+
         // Auto Load Referral Code from URL
         document.addEventListener("DOMContentLoaded", () => {
             const urlParams = new URLSearchParams(window.location.search);
@@ -572,20 +667,6 @@
             }
         });
 
-        // Support Bubble Logic
-        window.toggleSupport = () => {
-            const links = document.getElementById('support-links');
-            const icon = document.getElementById('support-icon');
-            if (links.classList.contains('opacity-0')) {
-                links.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
-                icon.classList.replace('fa-headset', 'fa-xmark');
-            } else {
-                links.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
-                icon.classList.replace('fa-xmark', 'fa-headset');
-            }
-        }
-
-        // Copy Referral Link
         window.copyReferLink = () => {
             if(window.myReferLink) {
                 navigator.clipboard.writeText(window.myReferLink);
@@ -683,7 +764,7 @@
         function openOverlay(id) {
             document.getElementById(id).style.display = 'flex';
             document.getElementById('bottom-nav').style.display = 'none';
-            document.getElementById('support-bubble').classList.add('hidden'); // Hide bubble in overlays
+            document.getElementById('support-bubble').classList.add('hidden'); 
             currentOverlay = id;
             history.pushState({ overlay: id }, '', '#' + id);
         }
@@ -691,7 +772,7 @@
         function closeAnyOverlay(id) {
             document.getElementById(id).style.display = 'none';
             document.getElementById('bottom-nav').style.display = 'block';
-            document.getElementById('support-bubble').classList.remove('hidden'); // Show bubble
+            document.getElementById('support-bubble').classList.remove('hidden'); 
             
             if(id === 'task-detail-overlay') {
                 document.getElementById('task-single-area').style.display = 'block';
@@ -940,6 +1021,10 @@
         let verifyTimeLeft = 300;
         let isRegistering = false;
 
+        // HISTORY MERGE STATE
+        window.historyPending = [];
+        window.historyResolved = [];
+
         setPersistence(auth, browserLocalPersistence).catch((error) => { console.error("Persistence Error:", error); });
 
         onAuthStateChanged(auth, async (user) => {
@@ -970,7 +1055,6 @@
                                 referCode: defaultRefCode, referredBy: "", commissionGenerated: 0
                             });
                         } else {
-                            // Update old users with referCode if missing
                             if(!userSnap.data().referCode) {
                                 await updateDoc(userRef, { referCode: user.uid.substring(0, 8).toUpperCase(), commissionGenerated: 0 });
                             }
@@ -1095,10 +1179,56 @@
             }
         }
 
+        window.renderMergedHistory = () => {
+            let merged = [...window.historyPending, ...window.historyResolved];
+            merged.sort((a, b) => {
+                let timeA = a.createdAt ? (a.createdAt.seconds || a.createdAt) : 0;
+                let timeB = b.createdAt ? (b.createdAt.seconds || b.createdAt) : 0;
+                return timeB - timeA;
+            });
+            merged = merged.slice(0, 10);
+            
+            const list = document.getElementById('home-history-list');
+            if(merged.length === 0) {
+                list.innerHTML = `<p class="text-xs text-slate-500 dark:text-zinc-400 text-center py-8 glass-card rounded-3xl font-medium">No recent tasks found.</p>`;
+                return;
+            }
+            let html = '';
+            merged.forEach(data => {
+                let shortId = data.id.length > 8 ? data.id.substring(0, 7).toUpperCase() : data.id;
+                let statusColor, statusBg, statusIcon;
+                
+                if(data.status === 'Pending') { 
+                    statusColor = 'text-amber-600 dark:text-amber-400'; 
+                    statusBg = 'bg-amber-100 dark:bg-amber-500/20 border-amber-200 dark:border-amber-500/30'; 
+                    statusIcon = 'fa-clock-rotate-left text-amber-500'; 
+                } else if(data.status === 'Approved') { 
+                    statusColor = 'text-emerald-600 dark:text-emerald-400'; 
+                    statusBg = 'bg-emerald-100 dark:bg-emerald-500/20 border-emerald-200 dark:border-emerald-500/30'; 
+                    statusIcon = 'fa-check-double text-emerald-500'; 
+                } else { 
+                    statusColor = 'text-rose-600 dark:text-rose-400'; 
+                    statusBg = 'bg-rose-100 dark:bg-rose-500/20 border-rose-200 dark:border-rose-500/30'; 
+                    statusIcon = 'fa-ban text-rose-500'; 
+                }
+                
+                html += `<div class="glass-card p-4 rounded-2xl shadow-sm flex justify-between items-center mb-3 transition-transform hover:-translate-y-0.5">
+                    <div class="flex items-center gap-3">
+                        <div class="h-10 w-10 ${statusBg} rounded-xl flex items-center justify-center text-lg"><i class="fa-solid ${statusIcon}"></i></div>
+                        <div>
+                            <p class="font-bold text-sm text-slate-800 dark:text-white mb-0.5 tracking-tight">Task Submission</p>
+                            <p class="text-[10px] text-slate-500 dark:text-zinc-400 font-mono font-bold tracking-widest">ID: ${shortId}</p>
+                        </div>
+                    </div>
+                    <span class="text-[10px] font-black px-3 py-1.5 rounded-lg ${statusBg} ${statusColor} uppercase tracking-widest border">${data.status}</span>
+                </div>`;
+            });
+            list.innerHTML = html;
+        }
+
         function loadDatabaseRealtime(user) {
             const uid = user.uid;
 
-            // Load Global Settings for Tasks and Support Links
             onSnapshot(doc(db, "app_settings", "global"), (docSnap) => {
                 if(docSnap.exists()) {
                     const data = docSnap.data();
@@ -1108,7 +1238,6 @@
                         document.getElementById('task-count-badge').innerText = `0 Available`;
                     }
                     
-                    // Support Links Update
                     const waLink = data.whatsappLink || '';
                     const tgLink = data.telegramLink || '';
                     const waEl = document.getElementById('link-whatsapp');
@@ -1119,7 +1248,6 @@
                 }
             });
 
-            // Load User Data
             onSnapshot(doc(db, "users", uid), async (docSnap) => {
                 if(!docSnap.exists()){ return; }
                 const data = docSnap.data();
@@ -1137,7 +1265,6 @@
                 const displayName = data.name || user.displayName || user.email.split('@')[0];
                 const photoUrl = user.photoURL || `https://ui-avatars.com/api/?name=${displayName}&background=8b5cf6&color=fff&bold=true`;
                 
-                // Set Referral Info
                 const myReferCode = data.referCode || uid.substring(0, 8).toUpperCase();
                 document.getElementById('refer-code-display').innerText = myReferCode;
                 window.myReferLink = `https://mricrotaskpro.cyou/?ref=${myReferCode}`;
@@ -1179,11 +1306,9 @@
                 document.getElementById('user-display-name-app').innerHTML = displayName + verifyTickHTML;
                 document.getElementById('profile-tab-name').innerHTML = displayName + verifyTickHTML;
                 
-                // Fetch Referrals
                 fetchReferrals(myReferCode);
             });
 
-            // LIVE TASKS
             onSnapshot(collection(db, "tasks"), async (snapshot) => {
                 const gSnap = await getDoc(doc(db, "app_settings", "global"));
                 let isEnabled = true;
@@ -1242,60 +1367,40 @@
                 }
             });
 
-            // RECENT TASK HISTORY
+            // UPDATED: LIVE HISTORY MERGE (Pending from DB, Approved/Rejected from Notices)
             onSnapshot(query(collection(db, "task_submissions"), where("uid", "==", uid)), (snapshot) => {
-                const list = document.getElementById('home-history-list');
-                
-                let historyArray = [];
+                window.historyPending = [];
                 snapshot.forEach(docSnap => { 
                     let d = docSnap.data();
                     d.id = docSnap.id;
-                    historyArray.push(d);
+                    d.status = 'Pending';
+                    window.historyPending.push(d);
                 });
-                
-                historyArray.sort((a, b) => {
-                    let timeA = a.createdAt ? a.createdAt.seconds : 0;
-                    let timeB = b.createdAt ? b.createdAt.seconds : 0;
-                    return timeB - timeA;
-                });
-                
-                historyArray = historyArray.slice(0, 10); 
-
-                if(historyArray.length === 0) {
-                    list.innerHTML = `<p class="text-xs text-slate-500 dark:text-zinc-400 text-center py-6 glass-card rounded-3xl font-medium">No recent tasks found.</p>`;
-                } else {
-                    let html = '';
-                    historyArray.forEach(data => {
-                        const shortId = data.id.substring(0, 7).toUpperCase();
-                        
-                        let tName = 'Task Submission';
-                        let rawTaskData = localStorage.getItem('raw_tasks_cache');
-                        if(rawTaskData) {
-                            let cache = JSON.parse(rawTaskData);
-                            let tData = cache.find(x => x.id === data.taskId);
-                            if(tData) tName = 'Live Task Submission';
-                        }
-
-                        html += `<div class="glass-card p-4 rounded-2xl shadow-sm flex justify-between items-center mb-3 transition-transform hover:-translate-y-0.5">
-                            <div class="flex items-center gap-3">
-                                <div class="h-10 w-10 bg-amber-500/10 rounded-xl text-amber-500 flex items-center justify-center text-lg"><i class="fa-solid fa-clock-rotate-left"></i></div>
-                                <div>
-                                    <p class="font-bold text-sm text-slate-800 dark:text-white mb-0.5 tracking-tight">${tName}</p>
-                                    <p class="text-[10px] text-slate-500 dark:text-zinc-400 font-mono font-bold tracking-widest">ID: ${shortId}</p>
-                                </div>
-                            </div>
-                            <span class="text-[10px] font-black px-3 py-1.5 rounded-lg bg-amber-100 text-amber-600 dark:bg-amber-500/20 uppercase tracking-widest border border-amber-200 dark:border-amber-500/30">Pending</span>
-                        </div>`;
-                    });
-                    list.innerHTML = html;
-                }
+                window.renderMergedHistory();
             });
 
             onSnapshot(collection(db, "notices"), (snapshot) => {
                 const list = document.getElementById('notif-list'), badge = document.getElementById('notif-badge');
                 let html = ''; let newCount = 0; let clearedNotices = JSON.parse(localStorage.getItem('clearedNotices')) || [];
+                
+                window.historyResolved = [];
+                
                 snapshot.forEach((docSnap) => {
                     const data = docSnap.data();
+                    
+                    if (data.targetUid === uid) {
+                        // Extract Resolved Task Status from Notices
+                        if (data.title.includes("Task Approved") || data.title.includes("Task Rejected")) {
+                            const match = data.msg.match(/\[(.*?)\]/);
+                            if (match) {
+                                window.historyResolved.push({
+                                    id: match[1],
+                                    status: data.title.includes("Approved") ? 'Approved' : 'Rejected',
+                                    createdAt: data.createdAt
+                                });
+                            }
+                        }
+                    }
                     
                     if (data.isGlobal || data.targetUid === uid) {
                         if(!clearedNotices.includes(docSnap.id)) {
@@ -1306,8 +1411,11 @@
                         }
                     }
                 });
+                
                 if(newCount === 0) { list.innerHTML = ''; list.style.display = 'none'; document.getElementById('notif-empty').style.display = 'flex'; badge.style.display='none'; } 
                 else { document.getElementById('notif-empty').style.display = 'none'; list.style.display = 'block'; badge.style.display='block'; list.innerHTML = html; }
+                
+                window.renderMergedHistory();
             });
 
             onSnapshot(query(collection(db, "payment_methods"), where("isActive", "==", true)), (snapshot) => {
@@ -1321,14 +1429,18 @@
                 if(snapshot.empty) { list.innerHTML = `<p class="text-sm text-slate-500 dark:text-zinc-400 text-center py-6 glass-card rounded-3xl font-medium">No withdrawals yet.</p>`; } 
                 else {
                     let html = '';
-                    snapshot.forEach((docSnap) => {
-                        const data = docSnap.data(); const sColor = data.status === 'paid' ? 'emerald' : (data.status === 'rejected' ? 'rose' : 'amber');
+                    // Sorting withdraws by time desc
+                    let wArray = [];
+                    snapshot.forEach(docSnap => wArray.push(docSnap.data()));
+                    wArray.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+                    
+                    wArray.forEach((data) => {
+                        const sColor = data.status === 'paid' ? 'emerald' : (data.status === 'rejected' ? 'rose' : 'amber');
                         html += `<div class="glass-card p-4 rounded-2xl shadow-sm flex items-center justify-between transition-transform hover:-translate-y-0.5"><div class="flex items-center gap-4"><div class="h-12 w-12 rounded-xl bg-cyan-100 dark:bg-cyan-500/10 flex items-center justify-center text-cyan-500 text-xl"><i class="fa-solid fa-building-columns"></i></div><div><p class="font-black text-sm capitalize text-slate-800 dark:text-white">${data.method}</p></div></div><div class="text-right"><p class="font-black text-base text-slate-800 dark:text-white tracking-tight mb-1">৳ ${data.amount}</p><span class="text-[9px] font-black bg-${sColor}-100 text-${sColor}-600 dark:bg-${sColor}-500/20 border border-${sColor}-200 dark:border-${sColor}-500/30 px-2.5 py-1 rounded-lg uppercase tracking-widest">${data.status}</span></div></div>`;
                     }); list.innerHTML = html;
                 }
             });
 
-            // LEADERBOARD
             onSnapshot(collection(db, "users"), (snapshot) => {
                 let usersList = [];
                 snapshot.forEach(doc => { usersList.push(doc.data()); });
@@ -1344,13 +1456,9 @@
                 pendingUsers.forEach((data) => {
                     htmlP += `<div class="glass-card p-4 rounded-2xl mb-3 flex items-center gap-4 border border-cyan-200 dark:border-cyan-500/20 shadow-sm"><h1 class="text-2xl font-black text-cyan-500 w-8 text-center drop-shadow-sm">${rankP++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-cyan-400 text-lg"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm text-slate-800 dark:text-white tracking-tight">${data.name}</p></div><p class="text-cyan-600 dark:text-cyan-400 font-black text-sm tracking-tight">${data.pendingTasks} Pending</p></div>`;
                 }); listP.innerHTML = htmlP || `<p class="text-center text-sm font-medium text-slate-500 py-6 glass-card rounded-3xl">No pending tasks found.</p>`;
-            }, (error) => {
-                document.getElementById('lb-approved-list').innerHTML = `<p class="text-xs text-rose-500 text-center py-4">Database Rules Error.</p>`;
-                document.getElementById('lb-pending-list').innerHTML = `<p class="text-xs text-rose-500 text-center py-4">Database Rules Error.</p>`;
             });
         }
 
-        // Fetch Referrals Logic
         function fetchReferrals(myRefCode) {
             if(!myRefCode) return;
             const qRef = query(collection(db, "users"), where("referredBy", "==", myRefCode));
@@ -1550,6 +1658,17 @@
             try {
                 await addDoc(collection(db, "withdrawals"), { uid: auth.currentUser.uid, email: auth.currentUser.email, method: method, account: account, amount: amount, status: "pending", timestamp: serverTimestamp() });
                 await updateDoc(doc(db, "users", auth.currentUser.uid), { balance: increment(-amount), totalWithdrawn: increment(amount) });
+                
+                // NEW: Send Notice immediately
+                await addDoc(collection(db, "notices"), {
+                    title: "Withdrawal Requested 💸",
+                    msg: `Your withdrawal request for ৳${amount} via ${method} has been successfully submitted.`,
+                    theme: "indigo",
+                    targetUid: auth.currentUser.uid,
+                    isGlobal: false,
+                    createdAt: serverTimestamp()
+                });
+
                 setButtonLoading('btn-withdraw-submit', false, 'Request Withdrawal', 'fa-solid fa-money-bill-transfer'); 
                 document.getElementById('withdraw-amount').value = ''; 
                 await window.smartAlert(`Withdrawal request of ৳${amount} submitted!`, "success");
@@ -1641,4 +1760,4 @@
         
     </script>
 </body>
-    </html>
+</html>
