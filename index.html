@@ -797,7 +797,7 @@
         function openSettings() { openOverlay('settings-overlay'); }
         function closeSettings() { if(currentOverlay==='settings-overlay') history.back(); else closeAnyOverlay('settings-overlay'); }
         
-        function openWithdraw() { openOverlay('withdraw-overlay'); document.getElementById('withdraw-balance-display').innerText = currentUserBalance.toLocaleString(); }
+        function openWithdraw() { openOverlay('withdraw-overlay'); document.getElementById('withdraw-balance-display').innerText = currentUserBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}); }
         function closeWithdraw() { if(currentOverlay==='withdraw-overlay') history.back(); else closeAnyOverlay('withdraw-overlay'); }
         
         function openNotifications() { openOverlay('notif-overlay'); const badge = document.getElementById('notif-badge'); if(badge) badge.style.display = 'none'; }
@@ -882,8 +882,9 @@
                 const fName = firstNames[Math.floor(Math.random()*firstNames.length)];
                 const lName = lastNames[Math.floor(Math.random()*lastNames.length)];
                 
-                const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-                let uname = fName.toLowerCase() + '_' + lName.toLowerCase() + '-';
+                const chars = 'abcdefghijklmnopqrstuvwxyz0123456789_';
+                // FIXED: INSTAGRAM VALID USERNAME LOGIC
+                let uname = fName.toLowerCase() + '_' + lName.toLowerCase() + '_';
                 for(let i=0; i<4; i++) uname += chars.charAt(Math.floor(Math.random() * chars.length));
                 
                 taskData = JSON.stringify({
@@ -1275,14 +1276,21 @@
                 document.getElementById('lb-current-user-pic').src = photoUrl;
                 document.getElementById('lb-current-name').innerText = `(${displayName})`;
                 
-                document.getElementById('main-balance').innerText = currentUserBalance.toLocaleString();
-                document.getElementById('withdraw-balance-display').innerText = currentUserBalance.toLocaleString();
-                document.getElementById('profile-total-earned').innerText = (data.totalEarned || 0).toLocaleString();
-                document.getElementById('profile-total-withdrawn').innerText = (data.totalWithdrawn || 0).toLocaleString();
+                // FIXED: Round balance logic inside the display update
+                document.getElementById('main-balance').innerText = currentUserBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('withdraw-balance-display').innerText = currentUserBalance.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                
+                let totalEarnedRounded = data.totalEarned || 0;
+                let totalWithdrawnRounded = data.totalWithdrawn || 0;
+                
+                document.getElementById('profile-total-earned').innerText = totalEarnedRounded.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                document.getElementById('profile-total-withdrawn').innerText = totalWithdrawnRounded.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                
                 document.getElementById('stat-pending-tasks').innerText = data.pendingTasks || 0;
                 document.getElementById('stat-approved-tasks').innerText = data.approvedTasks || 0;
+                
                 document.getElementById('lb-my-approved').innerText = data.approvedTasks || 0;
-                document.getElementById('lb-my-earned').innerText = data.totalEarned || 0;
+                document.getElementById('lb-my-earned').innerText = totalEarnedRounded.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
                 const kycBtn = document.getElementById('btn-verify-account'), pBadge = document.getElementById('profile-verify-badge');
                 let verifyTickHTML = '';
@@ -1309,6 +1317,7 @@
                 fetchReferrals(myReferCode);
             });
 
+            // LIVE TASKS
             onSnapshot(collection(db, "tasks"), async (snapshot) => {
                 const gSnap = await getDoc(doc(db, "app_settings", "global"));
                 let isEnabled = true;
@@ -1441,6 +1450,7 @@
                 }
             });
 
+            // LEADERBOARD
             onSnapshot(collection(db, "users"), (snapshot) => {
                 let usersList = [];
                 snapshot.forEach(doc => { usersList.push(doc.data()); });
@@ -1448,7 +1458,8 @@
                 let approvedUsers = usersList.filter(u => u.totalEarned > 0).sort((a,b) => b.totalEarned - a.totalEarned).slice(0, 10);
                 const listA = document.getElementById('lb-approved-list'); let htmlA = ''; let rankA = 1;
                 approvedUsers.forEach((data) => {
-                    htmlA += `<div class="glass-card p-4 rounded-2xl mb-3 flex items-center gap-4 border border-yellow-200 dark:border-yellow-500/20 shadow-sm"><h1 class="text-2xl font-black text-yellow-500 w-8 text-center drop-shadow-sm">${rankA++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-yellow-400 text-lg"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm text-slate-800 dark:text-white tracking-tight">${data.name}</p><p class="text-[10px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-widest mt-0.5">${data.approvedTasks || 0} Tasks done</p></div><p class="text-emerald-600 dark:text-emerald-400 font-black text-lg tracking-tight">৳ ${data.totalEarned || 0}</p></div>`;
+                    let displayEarn = (data.totalEarned || 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+                    htmlA += `<div class="glass-card p-4 rounded-2xl mb-3 flex items-center gap-4 border border-yellow-200 dark:border-yellow-500/20 shadow-sm"><h1 class="text-2xl font-black text-yellow-500 w-8 text-center drop-shadow-sm">${rankA++}</h1><div class="h-12 w-12 bg-slate-200 dark:bg-zinc-800 rounded-full flex items-center justify-center border-2 border-yellow-400 text-lg"><i class="fa-solid fa-user text-slate-400"></i></div><div class="flex-1"><p class="font-bold text-sm text-slate-800 dark:text-white tracking-tight">${data.name}</p><p class="text-[10px] text-slate-500 dark:text-zinc-400 font-bold uppercase tracking-widest mt-0.5">${data.approvedTasks || 0} Tasks done</p></div><p class="text-emerald-600 dark:text-emerald-400 font-black text-lg tracking-tight">৳ ${displayEarn}</p></div>`;
                 }); listA.innerHTML = htmlA || `<p class="text-center text-sm font-medium text-slate-500 py-6 glass-card rounded-3xl">No approved data.</p>`;
 
                 let pendingUsers = usersList.filter(u => u.pendingTasks > 0).sort((a,b) => b.pendingTasks - a.pendingTasks).slice(0, 10);
@@ -1482,12 +1493,12 @@
                                     <p class="text-[9px] text-slate-500 font-medium uppercase tracking-widest mt-0.5">Joined via link</p>
                                 </div>
                             </div>
-                            <span class="text-sm font-black text-emerald-500 tracking-tight">+৳${cGen}</span>
+                            <span class="text-sm font-black text-emerald-500 tracking-tight">+৳${cGen.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                         </div>`;
                     });
                     list.innerHTML = html;
                 }
-                document.getElementById('refer-total-commission').innerText = totalCom.toLocaleString();
+                document.getElementById('refer-total-commission').innerText = totalCom.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             });
         }
 
