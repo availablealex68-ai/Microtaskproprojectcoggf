@@ -882,10 +882,30 @@
                 const fName = firstNames[Math.floor(Math.random()*firstNames.length)];
                 const lName = lastNames[Math.floor(Math.random()*lastNames.length)];
                 
-                const chars = 'abcdefghijklmnopqrstuvwxyz0123456789_';
-                // FIXED: INSTAGRAM VALID USERNAME LOGIC
-                let uname = fName.toLowerCase() + '_' + lName.toLowerCase() + '_';
-                for(let i=0; i<4; i++) uname += chars.charAt(Math.floor(Math.random() * chars.length));
+                // FIXED: INSTAGRAM VALID USERNAME LOGIC (No double underscores, mixed variety)
+                const fLower = fName.toLowerCase();
+                const lLower = lName.toLowerCase();
+                const letters = 'abcdefghijklmnopqrstuvwxyz';
+                const numbers = '0123456789';
+                
+                const getRandomStr = (chars, len) => {
+                    let res = '';
+                    for(let i=0; i<len; i++) res += chars.charAt(Math.floor(Math.random() * chars.length));
+                    return res;
+                };
+                
+                const formatChoice = Math.floor(Math.random() * 4);
+                let uname = '';
+                
+                if (formatChoice === 0) {
+                    uname = fLower + '_' + lLower + getRandomStr(letters, 4);
+                } else if (formatChoice === 1) {
+                    uname = fLower + '.' + lLower + getRandomStr(numbers, 4);
+                } else if (formatChoice === 2) {
+                    uname = getRandomStr(letters, 10) + getRandomStr(numbers, 4);
+                } else {
+                    uname = fLower + '_' + getRandomStr(letters, 8) + getRandomStr(numbers, 3);
+                }
                 
                 taskData = JSON.stringify({
                     firstName: fName,
